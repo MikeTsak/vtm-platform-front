@@ -834,8 +834,8 @@ export default function Domains() {
     setTransitPrefs(p => ({ ...p, groups: { ...p.groups, [key]: !p.groups[key] } }));
   }, []);
 
-  // ── Restricted-overlay access (server-resolved: admin → all, Nosferatu →
-  // necropoleis, plus explicit admin grants) ──
+  // ── Restricted-overlay access (server-resolved: admin → all,
+  // plus explicit admin grants) ──
   // Keyed by user id so a fresh login (e.g. admin → player in the same tab)
   // never reads the previous account's cached access.
   const { data: overlayAccessData } = useQuery({

@@ -1,6 +1,7 @@
 import React from 'react';
 import styles from '../../../styles/CharacterSetup.module.css';
 import { Field, RandomizeButton } from './StepHelpers';
+import { vampireAges } from '../../../utils/ages';
 
 // Curated concept/ambition/desire combos: a quick, evocative starting point
 // a player can fill in with one click and still edit freely afterward.
@@ -24,8 +25,12 @@ export default function IdentityStep({
   ambition, setAmbition,
   desire, setDesire,
   sire, setSire,
+  birthDate, setBirthDate,
+  deathDate, setDeathDate,
   step, setStep
 }) {
+  const ages = vampireAges({ birthDate, deathDate });
+  const today = new Date().toISOString().slice(0, 10);
   const applySeed = (seed) => {
     setConcept(seed.concept);
     setAmbition(seed.ambition);
@@ -79,7 +84,19 @@ export default function IdentityStep({
         <Field label="Sire (the Story theller will tell you)">
           <input className={styles.input} value={sire} onChange={e=>setSire(e.target.value)} placeholder="Leave blank for now" />
         </Field>
+        <Field label="Born">
+          <input className={styles.input} type="date" value={birthDate} max={deathDate || today}
+            onChange={e=>setBirthDate(e.target.value)} />
+        </Field>
+        <Field label="Embraced (death day)">
+          <input className={styles.input} type="date" value={deathDate} min={birthDate || undefined} max={today}
+            onChange={e=>setDeathDate(e.target.value)} />
+        </Field>
       </div>
+      <p className={styles.muted} style={{ textAlign: 'left', margin: '4px 0 0' }}>
+        Apparent age {ages.apparent ?? '?'} · True age {ages.real ?? '?'}. A vampire looks the age they were Embraced at.
+        Optional: once your character is created each date is fixed, and only a Storyteller can change it.
+      </p>
       <div className={styles.navRow}>
         <button className={styles.ghostBtn} type="button" onClick={()=>setStep(1)}>Back</button>
         <button className={styles.cta} type="button" onClick={()=>setStep(3)}>Next</button>

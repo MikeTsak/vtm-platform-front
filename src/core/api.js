@@ -38,10 +38,41 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for rate limiting and other errors
+// Riding out a server restart. Every deploy, and every cold start after the
+// host idles the app, leaves api.attlarp.gr unanswered for ~30 s: Passenger
+// replies 503 (without CORS headers, so the browser reports a network/CORS
+// error with no response) or holds the request until it times out. Requests
+// that are safe to repeat wait and retry instead of failing. Writes are never
+// replayed: a POST that timed out may already have been applied. Login opts
+// in with { retrySafe: true } (logging in twice is harmless).
+const RETRY_DELAYS = [2000, 4000, 8000, 8000, 8000]; // ~30 s of retrying
+const isSafe = (c) => c.retrySafe || ['get', 'head', 'options'].includes((c.method || 'get').toLowerCase());
+const isRestartError = (e) => {
+  const s = e.response?.status;
+  return s === 502 || s === 503 || s === 504
+    || (!e.response && (e.code === 'ERR_NETWORK' || e.code === 'ECONNABORTED' || e.code === 'ETIMEDOUT'));
+};
+let lastRestartNotice = 0;
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config;
+    if (config && !axios.isCancel(error) && isSafe(config) && isRestartError(error)
+        && typeof navigator !== 'undefined' && navigator.onLine !== false) {
+      const attempt = config._retry || 0;
+      const started = config._retryStart || Date.now();
+      // Cap the total wait: each try can itself sit out the 30 s timeout.
+      if (attempt < RETRY_DELAYS.length && Date.now() - started < 75000) {
+        if (Date.now() - lastRestartNotice > 60000) {
+          lastRestartNotice = Date.now();
+          publish({ message: 'The server is restarting. Reconnecting...', type: 'info' });
+        }
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+        return api({ ...config, _retry: attempt + 1, _retryStart: started });
+      }
+    }
+
     // Handle rate limit (429) responses
     if (error.response && error.response.status === 429) {
       const retryAfter = error.response.headers['retry-after'];

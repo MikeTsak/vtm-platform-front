@@ -117,7 +117,8 @@ export default function AuthProvider({ children }) {
   }, [!!user]);
 
   const login = async (email, password) => {
-    await api.post('/auth/login', { email, password }); // server sets the httpOnly cookie
+    // retrySafe: ride out a server restart (see core/api.js); a duplicate login is harmless.
+    await api.post('/auth/login', { email, password }, { retrySafe: true }); // server sets the httpOnly cookie
     // wipe any cached queries from a previous account before loading this one
     queryClient.clear();
     clearOfflineSheet();

@@ -533,14 +533,17 @@ export default function Boons() {
     const map = new Map();
 
     // 1. Seed with known entities (Players and NPCs)
-    entities.forEach((ent, idx) => {
+    entities.forEach((ent) => {
       const clean = cleanPersonName(ent.name);
       if (!clean) return;
       const clanMatch = ent.name.match(/\(([^)]+)\)/);
       const clanOrRole = clanMatch ? clanMatch[1] : (ent.type === 'npc' ? 'NPC' : 'Kindred');
       
       map.set(clean.toLowerCase(), {
-        id: `ent_${ent.id || idx}_${ent.type}`,
+        // Unique by construction: the map is keyed by name. ent.id is the
+        // user id for players, shared by every character of one account, and
+        // a duplicate id crashes MiniSearch.addAll (whole page goes blank).
+        id: `ent_${ent.type}_${clean.toLowerCase()}`,
         key: clean.toLowerCase(),
         name: ent.name,
         cleanName: clean,

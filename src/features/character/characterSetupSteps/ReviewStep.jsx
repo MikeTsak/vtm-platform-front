@@ -3,9 +3,10 @@ import styles from '../../../styles/CharacterSetup.module.css';
 import { symlogo, textlogo } from '../../../data/clans';
 import { StatusIcon } from './StepHelpers';
 import { PREDATOR_TYPES } from '../../../data/predator_types';
+import { formatDate } from '../../../utils/ages';
 
 export default function ReviewStep({
-  name, clan, concept, chronicle, ambition, desire, sire, predatorType,
+  name, clan, concept, chronicle, ambition, desire, birthDate, deathDate, sire, predatorType,
   attrDots, derivedDisciplineDots, disciplinePowerPicks,
   skillDots, specialties,
   merits, flaws,
@@ -39,6 +40,7 @@ export default function ReviewStep({
         <li><b>Concept:</b> {concept || 'None'}  <b>Chronicle:</b> {chronicle}</li>
         <li><b>Ambition:</b> {ambition || 'None'}  <b>Desire:</b> {desire || 'None'}</li>
         <li><b>Sire:</b> {sire || 'None'}  <b>Predator:</b> {predatorType}</li>
+        <li><b>Born:</b> {formatDate(birthDate) || 'Not set'}  <b>Embraced:</b> {formatDate(deathDate) || 'Not set'}</li>
         <li><b>Health:</b> {health}  <b>Willpower:</b> {willpower}</li>
         <li><b>Humanity:</b> {derivedHumanity}  <b>Blood Potency:</b> {bloodPotency ?? 1}</li>
         <li><b>Disciplines:</b> {Object.entries(derivedDisciplineDots).map(([k,v])=>`${k} ${'•'.repeat(v)}`).join(' , ') || 'None'}</li>

@@ -94,6 +94,9 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   const [chronicle, setChronicle] = useState(draft?.chronicle ?? 'Athens Through-Time (S2)');
   const [ambition, setAmbition] = useState(draft?.ambition ?? '');
   const [desire, setDesire] = useState(draft?.desire ?? '');
+  // Born / Embraced (death day): set once, later only a Storyteller changes them.
+  const [birthDate, setBirthDate] = useState(draft?.birthDate ?? '');
+  const [deathDate, setDeathDate] = useState(draft?.deathDate ?? '');
 
   // Clan
   const [clan, setClan] = useState(draft?.clan ?? null);
@@ -174,13 +177,13 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   useEffect(() => {
     if (forNPC) return;
     saveDraft({
-      step, name, concept, chronicle, ambition, desire, clan, sire,
+      step, name, concept, chronicle, ambition, desire, birthDate, deathDate, clan, sire,
       predatorType, predatorPicks, attrDots, skillDots, skillPackage, specialties,
       selectedDiscs, favoredDisc, disciplinePowerPicks, merits, flaws, tenets, convictions, touchstones,
       humanity, bloodPotency,
     });
   }, [
-    forNPC, step, name, concept, chronicle, ambition, desire, clan, sire,
+    forNPC, step, name, concept, chronicle, ambition, desire, birthDate, deathDate, clan, sire,
     predatorType, predatorPicks, attrDots, skillDots, skillPackage, specialties,
     selectedDiscs, favoredDisc, disciplinePowerPicks, merits, flaws, tenets, convictions, touchstones,
     humanity, bloodPotency,
@@ -417,6 +420,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     // 7) Final payload (include predator freebies)
     const payload = {
       name, concept, chronicle, ambition, desire,
+      birthDate: birthDate || undefined, deathDate: deathDate || undefined,
       clan, sire, predatorType,
       attributes: attrDots,
       skills: skillDotsOut,
@@ -559,6 +563,10 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
               setAmbition={setAmbition}
               desire={desire}
               setDesire={setDesire}
+              birthDate={birthDate}
+              setBirthDate={setBirthDate}
+              deathDate={deathDate}
+              setDeathDate={setDeathDate}
               sire={sire}
               setSire={setSire}
               step={step}
@@ -659,6 +667,8 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
               chronicle={chronicle}
               ambition={ambition}
               desire={desire}
+              birthDate={birthDate}
+              deathDate={deathDate}
               sire={sire}
               predatorType={predatorType}
               attrDots={attrDots}

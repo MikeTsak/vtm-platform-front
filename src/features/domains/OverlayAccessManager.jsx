@@ -15,7 +15,7 @@ const KEY_LABELS = {
 //  · Admins can grant/revoke anything.
 //  · A non-admin who has an overlay can hand that same overlay to another
 //    player ("spread" it), and can revoke grants they personally made.
-//  · Nosferatu characters / admins show as locked auto-grants.
+//  · Admins show as locked auto-grants.
 // Rows are labelled by CHARACTER name.
 export default function OverlayAccessManager({ onClose, userId }) {
   const qc = useQueryClient();
@@ -80,7 +80,7 @@ export default function OverlayAccessManager({ onClose, userId }) {
             <p className={styles.accessMgrSub}>
               Base map &amp; Transit are open to everyone.
               {isAdmin
-                ? ' Grant the restricted overlays to any player. Admins see all · Nosferatu characters get both necropoleis automatically.'
+                ? ' Grant the restricted overlays to any player. Admins see all.'
                 : ' You can pass on an overlay you have to another player, and take back grants you made.'}
             </p>
           </div>
@@ -117,9 +117,7 @@ export default function OverlayAccessManager({ onClose, userId }) {
                 </div>
                 <div className={styles.accessMgrChips}>
                   {keys.map(k => {
-                    const auto =
-                      isAdminUser ||
-                      (isNosferatu && (k === 'necropolis_old' || k === 'necropolis_new'));
+                    const auto = isAdminUser;
                     const on = auto || u.granted.includes(k);
                     // non-admins can only revoke what they personally granted
                     const canRevoke = isAdmin || u.grantedByMe.includes(k);
@@ -134,7 +132,7 @@ export default function OverlayAccessManager({ onClose, userId }) {
                         disabled={locked}
                         title={
                           auto
-                            ? (isAdminUser ? 'Admin: always has access' : 'Nosferatu: automatic')
+                            ? 'Admin: always has access'
                             : on
                               ? (canRevoke ? 'Click to revoke' : 'Granted by someone else')
                               : 'Click to grant'
