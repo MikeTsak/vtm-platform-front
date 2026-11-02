@@ -110,6 +110,18 @@ export default function AdminInventoryTab({ characters = [] }) {
     }
   };
 
+  const give = async (item, characterId) => {
+    if (!characterId) return;
+    try {
+      await api.post(`/admin/inventory/${item.id}/give`, { character_id: Number(characterId) });
+      const who = sortedChars.find((c) => String(c.id) === String(characterId))?.name || 'the character';
+      toast.success(item.claim_copies && item.character_id == null ? `${who} got a copy of ${item.name}.` : `${item.name} given to ${who}.`);
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e, 'Could not give item'));
+    }
+  };
+
   const remove = async (item) => {
     if (!window.confirm(`Delete ${item.name} for good?`)) return;
     try {
@@ -174,12 +186,23 @@ export default function AdminInventoryTab({ characters = [] }) {
 
               {i.description && <p className={styles.desc}>{i.description}</p>}
               {i.mechanic_notes && <p className={styles.mech}><strong>Does:</strong> {i.mechanic_notes}</p>}
+              {i.st_notes && <p className={styles.mech}><strong>ST notes (private):</strong> {i.st_notes}</p>}
               {i.player_notes && <p className={styles.desc}><strong>Player notes:</strong> {i.player_notes}</p>}
 
               <label className={styles.switch}>
                 <input type="checkbox" checked={!!i.researched} onChange={() => patch(i, { researched: !i.researched })} />
                 <span>{i.researched ? 'Researched: holder sees what it does' : 'Unresearched: what it does is hidden'}</span>
               </label>
+
+              <select
+                className={styles.search}
+                value=""
+                onChange={(e) => give(i, e.target.value)}
+                aria-label={`Give ${i.name} to a character`}
+              >
+                <option value="">{i.character_id == null ? 'Give to a character…' : 'Give to someone else…'}</option>
+                {sortedChars.filter((c) => c.id !== i.character_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
 
               <div className={styles.row}>
                 <button type="button" className={styles.btnGhost} onClick={() => setEditing(i)}>

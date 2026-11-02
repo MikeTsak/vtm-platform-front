@@ -11,6 +11,7 @@ const InventoryItemModal = ({ item, onClose, onSave, busy, characters = null }) 
   const [itemType, setItemType] = useState(item?.item_type || 'Mundane');
   const [description, setDescription] = useState(item?.description || '');
   const [mechanicNotes, setMechanicNotes] = useState(item?.mechanic_notes || '');
+  const [stNotes, setStNotes] = useState(item?.st_notes || '');
   const [quantity, setQuantity] = useState(item?.quantity || 1);
   const [playerNotes, setPlayerNotes] = useState(item?.player_notes || '');
   const [characterId, setCharacterId] = useState(item?.character_id ?? '');
@@ -125,6 +126,11 @@ const InventoryItemModal = ({ item, onClose, onSave, busy, characters = null }) 
           </div>
 
           <div className={styles.formGroup}>
+            <label className={styles.label}>Storyteller notes (private: never shown to the player)</label>
+            <textarea className={styles.input} value={stNotes} onChange={e => setStNotes(e.target.value)} rows={3}></textarea>
+          </div>
+
+          <div className={styles.formGroup}>
             <label className={styles.label}>Player notes</label>
             <textarea className={styles.input} value={playerNotes} onChange={e => setPlayerNotes(e.target.value)} rows={2}></textarea>
           </div>
@@ -161,6 +167,7 @@ const InventoryItemModal = ({ item, onClose, onSave, busy, characters = null }) 
             item_type: itemType,
             description,
             mechanic_notes: mechanicNotes,
+            st_notes: stNotes,
             quantity,
             image: imagePreviewUrl || null,
             researched,

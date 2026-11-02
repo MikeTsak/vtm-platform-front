@@ -98,7 +98,7 @@ function Inventory({ characterId, canTrade = false, readOnly = false }) {
 
   const filteredItems = items.filter((item) => {
     if (activeTab === 'All') return true;
-    if (activeTab === 'Relics') return ['Relic', 'Artifact', 'Blood Magic'].includes(item.item_type);
+    if (activeTab === 'Relics') return ['Relic', 'Artifact', 'Blood Magic', 'Magic Item'].includes(item.item_type);
     if (activeTab === 'Weapons') return item.item_type === 'Weapon';
     if (activeTab === 'Armor') return item.item_type === 'Armor';
     if (activeTab === 'Gear') return ['Mundane', 'Gear'].includes(item.item_type);
@@ -159,6 +159,14 @@ function Inventory({ characterId, canTrade = false, readOnly = false }) {
                 <div className={styles.itemLocked}>
                   <span className="material-symbols-outlined" aria-hidden="true">lock</span>
                   <span>Unresearched. You can tell what it is, not what it does.</span>
+                </div>
+              )}
+
+              {isAdmin && item.st_notes && (
+                <div className={styles.itemMechanics}>
+                  <strong>ST notes</strong>
+                  <em className={styles.stOnly}> (private: the player never sees these)</em>
+                  <p>{item.st_notes}</p>
                 </div>
               )}
 

@@ -1,8 +1,9 @@
 // Shared by the player inventory and the admin Inventory tab.
 // Mirrors the enum on inventory_items.item_type (back/routes/inventory.js).
-export const ITEM_TYPES = ['Relic', 'Artifact', 'Blood Magic', 'Weapon', 'Armor', 'Mundane'];
+export const ITEM_TYPES = ['Relic', 'Artifact', 'Blood Magic', 'Magic Item', 'Weapon', 'Armor', 'Mundane'];
 
 export function itemIcon(itemType) {
+  if (itemType === 'Magic Item') return 'auto_fix_high';
   if (['Relic', 'Artifact', 'Blood Magic'].includes(itemType)) return 'diamond';
   if (itemType === 'Weapon') return 'swords';
   if (itemType === 'Armor') return 'shield';
