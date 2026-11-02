@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import styles from '../../styles/Admin.module.css';
 import FaGlyph from '../../ui/FaGlyph';
-import { symlogo as clanSymbol, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { symlogoWhite as clanSymbol, CLAN_HEX as CLAN_COLORS, clanTint } from '../../data/clans';
 
 /** ---------- Helpers ---------- */
 const getRollArt = (roll) => {
@@ -139,7 +139,7 @@ function StatList({ title, items, isExporting }) {
         )}
         <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {displayItems.map((item, i) => {
-            const color = CLAN_COLORS[item.clan] || 'var(--text-secondary)';
+            const color = clanTint(item.clan) || CLAN_COLORS[item.clan] || 'var(--text-secondary)';
             const logo = clanSymbol(item.clan);
             return (
               <li key={item.id || item.name} style={{ display: 'flex', alignItems: 'center', padding: isExporting ? '1rem 1.25rem' : '0.75rem 1.25rem', borderBottom: i < displayItems.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
@@ -217,11 +217,11 @@ function InteractivePieChart({ data, isExporting }) {
                onMouseLeave={() => !isExporting && setHovered(null)}
              >
                 {d.logo ? (
-                  <img src={d.logo} alt={d.label} style={{ width: isExporting ? '28px' : '20px', height: isExporting ? '28px' : '20px', objectFit: 'contain', flexShrink: 0 }} />
+                  <img src={d.logo} alt={d.label} style={{ width: isExporting ? '28px' : '20px', height: isExporting ? '28px' : '20px', objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.35))' }} />
                 ) : (
                   <div style={{ width: '14px', height: '14px', backgroundColor: d.color, borderRadius: '50%', flexShrink: 0 }} />
                 )}
-                <span style={{ fontSize: isExporting ? '1.1rem' : '0.9rem', color: 'var(--fg)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
+                <span style={{ fontSize: isExporting ? '1.1rem' : '0.9rem', color: d.color, textShadow: '0 0 2px rgba(255, 255, 255, 0.7), 0 0 4px rgba(255, 255, 255, 0.3)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
                 <span style={{ fontSize: isExporting ? '1.1rem' : '0.9rem', color: 'var(--muted)', marginLeft: 'auto', fontWeight: '900', paddingLeft: '10px' }}>{d.value}</span>
              </div>
            );
@@ -342,6 +342,8 @@ const userMap = useMemo(() => {
     const conversationCounts = new Map();
     const groupCounts = new Map();
     const interactionCounts = { p2p: 0, npc: 0, group: 0, email: 0 };
+    const pictureCounts = new Map();
+    let totalPictures = 0;
 
     for (const msg of allMsgs) {
       let s = null, r = null, sInfo = null;
@@ -375,6 +377,14 @@ const userMap = useMemo(() => {
       if (s && !String(s).startsWith('NPC-') && !sExcluded) senderCounts.set(Number(s), (senderCounts.get(Number(s)) || 0) + 1);
       if (r && !String(r).startsWith('NPC-') && !rExcluded) receiverCounts.set(Number(r), (receiverCounts.get(Number(r)) || 0) + 1);
       if (sInfo && sInfo.clan) clanMessageCounts.set(sInfo.clan, (clanMessageCounts.get(sInfo.clan) || 0) + 1);
+
+      const isPicture = !!(msg.attachment_id && (!msg.attachment_mime || msg.attachment_mime.startsWith('image/')));
+      if (isPicture) {
+        totalPictures++;
+        if (s && !String(s).startsWith('NPC-') && !sExcluded) {
+          pictureCounts.set(Number(s), (pictureCounts.get(Number(s)) || 0) + 1);
+        }
+      }
 
       if (msg.created_at) {
         const d = new Date(msg.created_at);
@@ -411,6 +421,10 @@ const userMap = useMemo(() => {
     const mostActiveGroup = getTies(groupCounts, id => {
       const g = chatGroups.find(x => x.id === id); return g ? g.name : `Group ${id}`;
     });
+    const mostPictures = getTies(pictureCounts, (id) => {
+      const uInfo = userMap.get(Number(id));
+      return uInfo ? (uInfo.char_name || uInfo.name) : `User ${id}`;
+    });
 
     const intoTopList = (map, nameMap) => Array.from(map.entries())
         .filter(([id]) => !String(id).startsWith('NPC-'))
@@ -420,7 +434,7 @@ const userMap = useMemo(() => {
           return { id, name: info.char_name || info.name, subname: info.char_name ? info.name : null, clan: info.clan, count };
         }).filter(Boolean).sort((a, b) => b.count - a.count).slice(0, 10);
 
-    return { totalInPeriod: allMsgs.length, avgPerDay: (allMsgs.length / totalDays).toFixed(1), busiestDay, busiestHour, longestConvo, mostFamousClan, mostActiveGroup, interactionCounts, topSenders: intoTopList(senderCounts, userMap), topReceivers: intoTopList(receiverCounts, userMap), hourCounts };
+    return { totalInPeriod: allMsgs.length, avgPerDay: (allMsgs.length / totalDays).toFixed(1), busiestDay, busiestHour, longestConvo, mostFamousClan, mostActiveGroup, interactionCounts, topSenders: intoTopList(senderCounts, userMap), topReceivers: intoTopList(receiverCounts, userMap), hourCounts, mostPictures, totalPictures };
   }, [filteredData, userMap, npcMap, chatGroups]);
 
   const extraStats = useMemo(() => {
@@ -528,8 +542,28 @@ const userMap = useMemo(() => {
     worstRoll.charName = Array.from(worstRoll.charNames).join(', ');
     const luckiestChar = { name: luckiestNames.length > 0 ? luckiestNames.join(', ') : 'None', ratio: luckiestRatio };
 
-    const rouseRolls = filteredDice.filter(d => d.note?.toLowerCase().includes('rouse'));
-    const successfulRouse = rouseRolls.filter(d => d.successes > 0).length;
+    const isRouseRoll = (d) => {
+      if (d.note && d.note.toLowerCase().includes('rouse')) return true;
+      if (d.roll_type && (
+        d.roll_type.toLowerCase().includes('rouse') ||
+        ['blood_surge', 'blush_of_life', 'ghoul_feeding'].includes(d.roll_type)
+      )) return true;
+      let res = d.results_json ?? d.results ?? {};
+      if (typeof res === 'string') {
+        try { res = JSON.parse(res); } catch { res = {}; }
+      }
+      return Array.isArray(res?.rouse) && res.rouse.length > 0;
+    };
+
+    const rouseRolls = filteredDice.filter(isRouseRoll);
+    const successfulRouse = rouseRolls.filter(d => {
+      if (d.successes > 0) return true;
+      let res = d.results_json ?? d.results ?? {};
+      if (typeof res === 'string') {
+        try { res = JSON.parse(res); } catch { res = {}; }
+      }
+      return Array.isArray(res?.rouse) && res.rouse.some(v => v >= 6);
+    }).length;
     const rouseSuccessRate = rouseRolls.length > 0 ? ((successfulRouse / rouseRolls.length) * 100).toFixed(1) : 0;
 
     let totalResTime = 0; let resolvedCount = 0;
@@ -575,7 +609,7 @@ const popStats = useMemo(() => {
 
     const mostPoliticalClan = getTies(politicalPower);
     const avgHumanity = humanityCount > 0 ? (totalHumanity / humanityCount).toFixed(1) : 'N/A';
-    const pieData = Object.entries(clanPop).sort((a, b) => b[1] - a[1]).map(([clan, count]) => ({ label: clan, value: count, color: CLAN_COLORS[clan] || '#888', logo: clanSymbol(clan) }));
+    const pieData = Object.entries(clanPop).sort((a, b) => b[1] - a[1]).map(([clan, count]) => ({ label: clan, value: count, color: clanTint(clan) || CLAN_COLORS[clan] || '#888', logo: clanSymbol(clan) }));
 
     return { active, deceased, retired, pieData, avgHumanity, mostPoliticalClan };
   }, [characters]);
@@ -753,10 +787,20 @@ const popStats = useMemo(() => {
                 <StatCard title="Most Active Group" value={periodStats.mostActiveGroup.name} subtext={`${periodStats.mostActiveGroup.count.toLocaleString()} msgs`} isExporting={isExporting} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isExporting ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                <StatCard title="Player-to-Player" value={periodStats.interactionCounts.p2p.toLocaleString()} subtext="Direct" isExporting={isExporting} />
+                <StatCard title="Player to Player" value={periodStats.interactionCounts.p2p.toLocaleString()} subtext="Direct" isExporting={isExporting} />
                 <StatCard title="NPC Interactions" value={periodStats.interactionCounts.npc.toLocaleString()} subtext="Storyteller" isExporting={isExporting} />
                 <StatCard title="Group Activity" value={periodStats.interactionCounts.group.toLocaleString()} subtext="Coteries" isExporting={isExporting} />
                 <StatCard title="Email Traffic" value={periodStats.interactionCounts.email.toLocaleString()} subtext="Mortal" isExporting={isExporting} />
+                <StatCard
+                  title="Most Pictures Uploaded"
+                  value={periodStats.mostPictures.name}
+                  subtext={
+                    periodStats.mostPictures.count > 0
+                      ? `${periodStats.mostPictures.count.toLocaleString()} ${periodStats.mostPictures.count === 1 ? 'picture uploaded' : 'pictures uploaded'}`
+                      : 'No pictures uploaded'
+                  }
+                  isExporting={isExporting}
+                />
               </div>
             </section>
 

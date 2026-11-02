@@ -149,7 +149,7 @@ export default function AdminMasterTab({ characters: propChars = null, users: pr
     setSchemaRunning(true);
     setSchemaRunMsg(null);
     try {
-      const { data } = await api.post('/admin/schema-versions/run');
+      const { data } = await api.post('/admin/schema-versions/run', null, { timeout: 0 });
       setSchemaRunMsg({ ok: true, text: data.ran.length ? `Applied: ${data.ran.join(', ')}` : 'Nothing to apply.' });
     } catch (e) {
       const d = e?.response?.data;

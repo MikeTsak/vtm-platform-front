@@ -1,8 +1,14 @@
 import axios from 'axios';
 import { publish } from '../utils/notification';
 
+// Give up after 30 s so a stuck server shows an error instead of spinning
+// forever (the login button sat on "Authenticating..."). A call that is
+// legitimately slow passes { timeout: 0 }.
+const DEFAULT_TIMEOUT = 30000;
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
+  timeout: DEFAULT_TIMEOUT,
   // The session lives in an httpOnly cookie (see back/utils/authCookie.js):
   // this makes the browser attach it automatically. There is no token in JS
   // to read or set; that's the point (an XSS payload can't steal a cookie it
@@ -24,6 +30,10 @@ api.interceptors.request.use((config) => {
   // opt-in, only for the handful of endpoints where a duplicate would cause
   // real harm (XP spend): see utils/idempotencyKey.js, called explicitly at
   // those call sites instead of here.
+
+  // Uploads keep no limit (see timeout above): a big image on a slow phone can
+  // legitimately take longer than 30 s.
+  if (config.data instanceof FormData && config.timeout === DEFAULT_TIMEOUT) config.timeout = 0;
 
   return config;
 });
@@ -57,6 +67,9 @@ api.interceptors.response.use(
 export function formatApiError(e, fallback = 'Operation failed') {
   if (!e) return fallback;
   if (typeof e === 'string') return e;
+  if (e.code === 'ECONNABORTED' || e.code === 'ETIMEDOUT') {
+    return 'The server did not answer in time. It may be busy or restarting: try again in a minute.';
+  }
 
   const status = e.response?.status;
   const url = e.config?.url;

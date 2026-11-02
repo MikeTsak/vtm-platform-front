@@ -499,9 +499,17 @@ export default function AdminCalendarTab() {
     setNewCycleClosing('');
   };
 
-  // Auto Generate all 12 DT Cycles from chronicle events
+  // Auto Generate all DT Cycles from chronicle events (Modern Day events only)
+  // Rules (user, 2026-11-02): past-time events get no cycle; a cycle closes the Sunday before its
+  // event, or 2 weeks before when a past-time event falls inside it. Ghoul upkeep (closing day
+  // 20:00) and release (next day 10:00) are filled in by the server.
   const handleAutoGenerateCycles = async () => {
-    const sorted = [...events].filter(e => e.date).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const isPast = (e) => /past time/i.test(e.title || '');
+    const pastDates = events.filter((e) => e.date && isPast(e)).map((e) => new Date(e.date));
+    const today = formatDateOnly(new Date());
+    const sorted = [...events]
+      .filter(e => e.date && !isPast(e))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
     if (sorted.length === 0) {
       showFeedback('No chronicle events found to generate cycles from', true);
       return;
@@ -512,7 +520,9 @@ export default function AdminCalendarTab() {
       const ev = sorted[i];
       const evDate = new Date(ev.date);
       const dayOfWeek = evDate.getDay();
-      const daysToSubtract = dayOfWeek === 0 ? 7 : dayOfWeek;
+      const prevDate = i > 0 ? new Date(sorted[i - 1].date) : null;
+      const pastInside = prevDate && pastDates.some((d) => d > prevDate && d < evDate);
+      const daysToSubtract = (dayOfWeek === 0 ? 7 : dayOfWeek) + (pastInside ? 7 : 0);
       const closeObj = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate() - daysToSubtract);
       const closeStr = formatDateOnly(closeObj);
 
@@ -539,7 +549,8 @@ export default function AdminCalendarTab() {
         opening_date: openStr,
         closing_date: closeStr,
         linked_event_id: ev.id,
-        status: i === 1 ? 'active' : (i === 0 ? 'closed' : 'scheduled')
+        // By today's date, not by position (position 1 used to be marked active forever).
+        status: closeStr < today ? 'closed' : (openStr <= today ? 'active' : 'scheduled'),
       });
     }
 
@@ -819,12 +830,23 @@ export default function AdminCalendarTab() {
     return map;
   }, [events]);
 
-  // Combined DT Close map: computes from events AND from all configured dtCycles
+  // DT Close map: computes strictly from configured dtCycles (source of truth).
+  // Falls back to Modern Day chronicle events only if no cycles are configured.
   const dtCloseMap = useMemo(() => {
     const map = {};
-    // From all chronicle events
+    if (dtCycles && dtCycles.length > 0) {
+      for (const cycle of dtCycles) {
+        if (!cycle.closing_date) continue;
+        const closeStr = cycle.closing_date;
+        if (!map[closeStr]) map[closeStr] = [];
+        map[closeStr].push({ title: cycle.title, type: 'cycle' });
+      }
+      return map;
+    }
+
+    // Fallback only when dtCycles has not been configured: Modern Day events only (Past Time events have no DT cycles)
     for (const ev of events) {
-      if (!ev.date) continue;
+      if (!ev.date || /past time/i.test(ev.title || '')) continue;
       const evDate = new Date(ev.date);
       if (isNaN(evDate.getTime())) continue;
       const d = evDate.getDay();
@@ -833,15 +855,8 @@ export default function AdminCalendarTab() {
       const closeStr = formatDateOnly(closeObj);
       if (closeStr) {
         if (!map[closeStr]) map[closeStr] = [];
-        map[closeStr].push({ title: cleanTitle(ev.title), type: 'event' });
+        map[closeStr].push({ title: cleanTitle(ev.elysium_name || ev.title), type: 'event' });
       }
-    }
-    // From configured DT cycles
-    for (const cycle of dtCycles) {
-      if (!cycle.closing_date) continue;
-      const closeStr = cycle.closing_date;
-      if (!map[closeStr]) map[closeStr] = [];
-      map[closeStr].push({ title: cycle.title, type: 'cycle' });
     }
     return map;
   }, [events, dtCycles]);
@@ -972,20 +987,24 @@ export default function AdminCalendarTab() {
       .filter(ev => ev.date)
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(ev => {
+        const isPastTime = /past time/i.test(ev.title || '');
+        const matchingCycle = dtCycles.find(c => c.linked_event_id === ev.id);
         const evDate = new Date(ev.date);
         const d = evDate.getDay();
         const sub = d === 0 ? 7 : d;
-        const closeObj = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate() - sub);
+        const fallbackCloseObj = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate() - sub);
+        const closeDateStr = matchingCycle ? matchingCycle.closing_date : (isPastTime ? null : formatDateOnly(fallbackCloseObj));
         return {
           id: ev.id,
           title: cleanTitle(ev.title),
           rawDate: ev.date,
           eventDateStr: formatDateOnly(evDate),
-          closeDateStr: formatDateOnly(closeObj),
+          closeDateStr,
+          isPastTime,
           isNext: nextUpcomingEvent && nextUpcomingEvent.id === ev.id
         };
       });
-  }, [events, nextUpcomingEvent]);
+  }, [events, nextUpcomingEvent, dtCycles]);
 
   // Calendar rendering
   const renderCalendar = () => {
@@ -2161,10 +2180,17 @@ export default function AdminCalendarTab() {
                   <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>celebration</span>
                   <span>Event: {formatEuDate(item.eventDateStr)}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#ff80ab' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>alarm_off</span>
-                  <span>DT Close: Sunday {formatEuDate(item.closeDateStr)}</span>
-                </div>
+                {item.closeDateStr ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#ff80ab' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>alarm_off</span>
+                    <span>DT Close: Sunday {formatEuDate(item.closeDateStr)}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>history_toggle_off</span>
+                    <span>No Downtime Cycle: Past Time Event</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}

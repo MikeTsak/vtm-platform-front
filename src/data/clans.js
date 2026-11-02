@@ -494,8 +494,12 @@ export const CLAN_DISCIPLINES = {
 // --- Asset helpers ---
 export const NAME_OVERRIDES = {
   'The Ministry': 'Ministry',
+  'The_Ministry': 'Ministry',
   'Banu Haqim': 'Banu_Haqim',
   'Thin-blood': 'Thinblood',
+  'Thin-Blood': 'Thinblood',
+  'Thin blood': 'Thinblood',
+  'Thin Blood': 'Thinblood',
 };
 
 export const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
@@ -593,17 +597,22 @@ export const textlogoWhiteSrcSet = (c) => {
 
 export const clanTint = (clan) => {
   if (!clan) return '#8a0f1a';
-  const rules = CLAN_THEME_RULES[clan];
+  const norm = NAME_OVERRIDES[clan] || clan;
+  const rules = CLAN_THEME_RULES[clan] 
+    || CLAN_THEME_RULES[norm]
+    || CLAN_THEME_RULES[clan.replace(/[\s_-]+/g, '')]
+    || CLAN_THEME_RULES[clan.replace(/\s+/g, '_')]
+    || CLAN_THEME_RULES[clan.replace(/_/g, ' ')];
   if (rules?.primaryAccent) return rules.primaryAccent;
   return CLAN_COLORS[clan]?.[0] || '#8a0f1a';
 };
 
-// Flat { clan: '#hex' } map: the first (accent) colour of each gradient pair.
+// Flat { clan: '#hex' } map: canonical primary accent color per clan.
 // Drop-in replacement for the per-file CLAN_COLORS string maps that used to be
 // copy-pasted across the admin tabs, CharacterView, etc. Unknown/blank clans
 // are simply absent, so callers keep their own `|| 'var(--text-secondary)'`.
 export const CLAN_HEX = Object.fromEntries(
-  Object.entries(CLAN_COLORS).map(([clan, pair]) => [clan, pair[0]])
+  [...new Set([...Object.keys(CLAN_COLORS), ...Object.keys(CLAN_THEME_RULES)])].map((clan) => [clan, clanTint(clan)])
 );
 
 export const getClanPalette = (clan) => {

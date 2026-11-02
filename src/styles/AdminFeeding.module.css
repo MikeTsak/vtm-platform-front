@@ -212,6 +212,12 @@ details[open] .chevron { transform: rotate(90deg); }
 .stepBtn:disabled { opacity: 0.35; cursor: not-allowed; }
 .stepBtn:hover:not(:disabled) { background: rgba(230, 57, 70, 0.2); }
 
+/* Domain Safety control: same shape, blue instead of blood */
+.safetyCtl { border-color: rgba(126, 207, 255, 0.35); background: rgba(126, 207, 255, 0.07); }
+.safetyCtl .stepBtn { border-color: rgba(126, 207, 255, 0.45); color: #7ecfff; }
+.safetyCtl .stepBtn:hover:not(:disabled) { background: rgba(126, 207, 255, 0.18); }
+.ctlGroup { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
 .more { align-self: center; margin-top: 0.4rem; }
 
 /* ── Player grid ─────────────────────────────────────────────────────── */
@@ -327,6 +333,7 @@ details[open] .chevron { transform: rotate(90deg); }
   .facts4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .feedBottom { flex-direction: column; align-items: stretch; }
   .feedBottom .hungerCtl { justify-content: space-between; }
+  .feedBottom .ctlGroup { flex-direction: column; }
   .feedBottom .row { justify-content: flex-end; }
   .stepBtn { width: 2.4rem; height: 2.4rem; }
   .backdrop { align-items: flex-end; }

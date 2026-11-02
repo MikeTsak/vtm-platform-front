@@ -105,7 +105,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'domains',    icon: 'map',          label: 'Domain Threats', hint: 'Safety ratings and monthly problems', keywords: ['map', 'territory', 'security', 'hunters', 'inquisition', 'threats', 'lupines', 'sabbat', 'danger', 'safety rating'] },
       { id: 'claims',     icon: 'local_police', label: 'Domain Claims',  hint: 'Territory ownership and stewards', keywords: ['domains', 'domain stewards', 'territory', 'claims map access', 'who can assign domains', 'grant', 'revoke', 'permission', 'approve requests', 'court'] },
-      { id: 'feeding',    icon: 'nightlight',   label: 'Feeding Control', hint: 'Hunting cycles, blood, and decay', keywords: ['hunting', 'blood', 'predator type', 'chasse merits', 'masquerade', 'safety rating', 'cycle', 'enable', 'disable', 'decay', 'force new cycle'] },
+      { id: 'feeding',    icon: 'nightlight',   label: 'Feeding Control', hint: 'Hunting cycles, blood, and domain Safety', keywords: ['hunting', 'blood', 'predator type', 'chasse merits', 'masquerade', 'safety rating', 'cycle', 'enable', 'disable', 'decay', 'force new cycle'] },
       { id: 'masquerade', icon: 'warning',      label: 'Masquerade Dial', hint: 'Global threat level 1 to 5', keywords: ['breaches', 'exposure', 'threat', 'danger', 'level', 'tracker', 'second inquisition', 'cleanup', 'media', 'dial'] },
     ],
   },

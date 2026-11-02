@@ -61,7 +61,7 @@ export default function AdminJobsTab() {
     setRunning(job.name);
     setMsg('');
     try {
-      const { data: r } = await api.post(`/admin/jobs/${job.name}/run`);
+      const { data: r } = await api.post(`/admin/jobs/${job.name}/run`, null, { timeout: 0 });
       setMsg(r.ok ? `${job.label}: ${r.note || 'done'}` : `${job.label} failed: ${(r.error || '').split('\n')[0]}`);
       await load();
     } catch (e) {

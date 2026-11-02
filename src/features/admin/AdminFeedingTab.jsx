@@ -201,6 +201,19 @@ function HungerControl({ value, busy, onAdjust, compact = false }) {
   );
 }
 
+// The hunted division's Safety now with instant -/+ (the domain as it is today, not the roll).
+function SafetyControl({ value, busy, onAdjust }) {
+  const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+  return (
+    <span className={`${styles.hungerCtl} ${styles.safetyCtl}`} onClick={(e) => e.stopPropagation()}>
+      <span className={styles.hungerLabel}>Safety now</span>
+      <button type="button" className={styles.stepBtn} disabled={busy || value <= 0} onClick={stop(() => onAdjust(-1))} aria-label="Safety -1">−</button>
+      <b className={styles.hungerNum} style={{ color: safetyColor(value) }}>{value}/10</b>
+      <button type="button" className={styles.stepBtn} disabled={busy || value >= 10} onClick={stop(() => onAdjust(1))} aria-label="Safety +1">+</button>
+    </span>
+  );
+}
+
 function Fact({ label, children, sub, color }) {
   return (
     <div className={styles.fact}>
@@ -473,6 +486,9 @@ export default function AdminFeedingTab() {
   // Instant Hunger edits: character id -> Hunger, shown everywhere until the next load.
   const [hungerNow, setHungerNow] = useState({});
   const [hungerBusy, setHungerBusy] = useState({});
+  // Same for domain Safety: division -> rating.
+  const [safetyNow, setSafetyNow] = useState({});
+  const [safetyBusy, setSafetyBusy] = useState({});
 
   const notify = useCallback((text, isError = false) => {
     setNotice({ text, isError });
@@ -494,6 +510,7 @@ export default function AdminFeedingTab() {
         api.get('/admin/feeding/herd-roster'),
       ]);
       setHungerNow({});
+      setSafetyNow({});
       setData({
         index,
         isCurrent: index === cyc.current,
@@ -523,6 +540,21 @@ export default function AdminFeedingTab() {
       notify(formatApiError(e, 'Hunger change failed'), true);
     } finally {
       setHungerBusy((b) => ({ ...b, [characterId]: false }));
+    }
+  }, [notify]);
+
+  // Sets the absolute rating through the Domains endpoint (admin-only, audit-logged).
+  const adjustSafety = useCallback(async (division, current, delta) => {
+    const next = Math.max(0, Math.min(10, current + delta));
+    setSafetyBusy((b) => ({ ...b, [division]: true }));
+    try {
+      await api.patch(`/domain-claims/${division}/safety`, { safety_rating: next });
+      setSafetyNow((s) => ({ ...s, [division]: next }));
+      notify(`${getDivisionName(division) || `Division ${division}`}: Safety ${current} → ${next}`);
+    } catch (e) {
+      notify(formatApiError(e, 'Safety change failed'), true);
+    } finally {
+      setSafetyBusy((b) => ({ ...b, [division]: false }));
     }
   }, [notify]);
 
@@ -691,6 +723,11 @@ export default function AdminFeedingTab() {
               const sf = safetyOf(f);
               const isHunt = !NOT_HUNTS.includes(f.outcome);
               const now = hungerNow[f.character_id] ?? (f.current_hunger != null ? Number(f.current_hunger) : 1);
+              // Live rating (unset counts as 10, as the server does); later hunts, recovery and
+              // Storyteller edits move it after this roll, so say by how much instead of looking wrong.
+              const safetyLive = isHunt && f.division
+                ? (safetyNow[f.division] ?? (f.current_domain_safety != null ? Number(f.current_domain_safety) : 10)) : null;
+              const since = sf?.after != null && safetyLive != null ? safetyLive - sf.after : 0;
               return (
                 <article key={f.id} className={styles.feedCard} style={{ '--outcome': o.color }}>
                   <div className={styles.feedTop}>
@@ -706,8 +743,8 @@ export default function AdminFeedingTab() {
                       {whereOf(f)}
                     </Fact>
                     {sf ? (
-                      <Fact label="Safety" color={safetyColor(sf.after ?? sf.now)}
-                        sub={sf.now != null ? `now ${sf.now}/10` : null}>
+                      <Fact label="Safety" color={safetyColor(sf.after ?? safetyLive)}
+                        sub={safetyLive != null ? `now ${safetyLive}/10${since ? ` · ${signed(since)} since, other changes` : ''}` : null}>
                         {sf.before != null ? `${sf.before} → ${sf.after}` : signed(sf.delta)}
                         {sf.before != null && <em className={styles.delta}> {signed(sf.delta)}</em>}
                       </Fact>
@@ -722,7 +759,13 @@ export default function AdminFeedingTab() {
                   </div>
                   {f.failure_reason && <p className={styles.story}>{f.failure_reason}</p>}
                   <div className={styles.feedBottom}>
-                    <HungerControl value={now} busy={!!hungerBusy[f.character_id]} onAdjust={(d) => adjustHunger(f.character_id, d)} />
+                    <div className={styles.ctlGroup}>
+                      <HungerControl value={now} busy={!!hungerBusy[f.character_id]} onAdjust={(d) => adjustHunger(f.character_id, d)} />
+                      {safetyLive != null && (
+                        <SafetyControl value={safetyLive} busy={!!safetyBusy[f.division]}
+                          onAdjust={(d) => adjustSafety(f.division, safetyLive, d)} />
+                      )}
+                    </div>
                     <div className={styles.row}>
                       <button type="button" className={styles.btn} onClick={() => openFeeding(f.id)}>Details</button>
                       <UndoButton what={undoWhat(f, isCurrent)} onConfirm={async () => {
@@ -884,11 +927,11 @@ export default function AdminFeedingTab() {
         <div className={styles.row}>
           <button type="button" className={styles.btn} disabled={busy}
             onClick={() => confirmRun(
-              'Run cycle-end decay for the last completed cycle?\n\nEvery division with no failed feeding that cycle loses 1 Safety, and every character with Herd regains 1 point. This normally runs by itself overnight; a cycle already processed is skipped.',
-              () => api.post('/admin/feeding/run-decay'),
-              (r) => (r?.skipped ? `Decay skipped: ${r.skipped}` : `Decay: ${r?.decayed ?? 0} division(s). Herd regen: ${r?.herdRegen ?? 0} character(s).`),
-              'Failed to run decay')}>
-            <FaGlyph icon={FEEDING_ICONS.shieldHalved} size={12} /> Run decay + Herd regen
+              'Run the nightly upkeep now?\n\nEvery division with no failed hunt for 3 months gains 1 Safety, and when a cycle has ended every character with Herd regains 1 point. Both run by themselves overnight; anything already done is skipped.',
+              () => api.post('/admin/feeding/run-cycle-end'),
+              (r) => `Safety +1 in ${r?.recovered ?? 0} division(s). Herd: ${r?.herd?.skipped ? r.herd.skipped : `${r?.herd?.herdRegen ?? 0} character(s) regained a point`}.`,
+              'Failed to run the upkeep')}>
+            <FaGlyph icon={FEEDING_ICONS.shieldHalved} size={12} /> Run Safety recovery + Herd regen
           </button>
           {!status.isDowntimeLinked && (
             <button type="button" className={styles.btn} disabled={busy}

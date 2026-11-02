@@ -104,7 +104,7 @@ function StatChip({ icon, color, children }) {
 function SafetyPill({ value }) {
   const color = safetyColor(value);
   return (
-    <span className={styles.metricPill} style={{ color, borderColor: color }} title="Masquerade Safety: how exposed this domain already is, 0 (blown) to 10 (pristine). Moves only from what happens here: hunts gone wrong, or quiet neglect.">
+    <span className={styles.metricPill} style={{ color, borderColor: color }} title="Masquerade Safety: how exposed this domain already is, 0 (blown) to 10 (pristine). Drops when hunts here go wrong; recovers 1 point for every 3 months without one.">
       <FaGlyph icon={FEEDING_ICONS.shieldHalved} size={11} />
       Safety {value}
     </span>
