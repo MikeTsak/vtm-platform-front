@@ -19,6 +19,7 @@ import CookieConsent from '../components/CookieConsent';
 import Nav from '../ui/Nav';
 import Footer from '../ui/Footer';
 import Loading from '../ui/Loading';
+import ErrorBoundary from '../ui/ErrorBoundary';
 
 import { roleFlags } from './useRole';
 const RouteLoader = () => (
@@ -289,6 +290,9 @@ function AppLayout() {
             : { flexGrow: 1 }
         }
       >
+        {/* A crash in one page (or a chunk that failed to load) shows a Reload
+            message instead of blanking the whole app; navigating resets it. */}
+        <ErrorBoundary key={location.pathname}>
         <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/" element={<Private><Home /></Private>} />
@@ -347,11 +351,14 @@ function AppLayout() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </div>
       <NotificationBanner />
-      <Suspense fallback={null}>
-        <DiceRoller />
-      </Suspense>
+      <ErrorBoundary fallback={null}>
+        <Suspense fallback={null}>
+          <DiceRoller />
+        </Suspense>
+      </ErrorBoundary>
       <CookieConsent />
       {!isImmersive && <Footer />}
     </div>

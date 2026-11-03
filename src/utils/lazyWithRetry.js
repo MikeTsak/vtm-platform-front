@@ -45,6 +45,25 @@ export function shouldReloadForChunkFailure(storage, now = Date.now()) {
   return true;
 }
 
+/**
+ * Handler for Vite's 'vite:preloadError' (see src/index.jsx). preventDefault()
+ * ONLY when reloading, or when just a stylesheet failed (an extension or a CORS
+ * hiccup on the injected <link>: the module itself still loads). Preventing a
+ * failed JS chunk makes Vite resolve the import with undefined instead of
+ * rejecting it, and React.lazy crashes reading `.default`: a blank page with no
+ * way out (SchreckNet, 2026-11-03, a chunk failing twice within the cooldown
+ * under lag). Left alone, the import rejects and lazyWithRetry / the
+ * ErrorBoundary in App.jsx handle it.
+ */
+export function onPreloadError(event, storage, reload = () => window.location.reload()) {
+  if (/preload CSS/.test(event.payload?.message || '')) {
+    event.preventDefault();
+  } else if (shouldReloadForChunkFailure(storage)) {
+    event.preventDefault();
+    reload();
+  }
+}
+
 export function lazyWithRetry(importer) {
   return React.lazy(async () => {
     try {

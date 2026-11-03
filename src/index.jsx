@@ -5,7 +5,7 @@ import './styles/global/index.css';
 import './bones/registry';
 import App from './core/App';
 import reportWebVitals from './reportWebVitals';
-import { shouldReloadForChunkFailure } from './utils/lazyWithRetry';
+import { onPreloadError } from './utils/lazyWithRetry';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -24,12 +24,8 @@ const queryClient = new QueryClient();
 // never sees it. Without this listener it surfaces as a bare uncaught error
 // and the app renders blank. Reuses the same cooldown so a genuinely broken
 // chunk doesn't reload forever.
-window.addEventListener('vite:preloadError', (event) => {
-  event.preventDefault();
-  if (shouldReloadForChunkFailure(window.sessionStorage)) {
-    window.location.reload();
-  }
-});
+// See onPreloadError for when it may (and must not) preventDefault().
+window.addEventListener('vite:preloadError', (event) => onPreloadError(event, window.sessionStorage));
 
 // 🔧 Register Service Worker for PWA
 async function registerServiceWorker() {

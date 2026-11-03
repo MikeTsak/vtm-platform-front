@@ -16,6 +16,19 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// One Idempotency-Key per submission attempt, on every POST (the server
+// honours it on every POST route: back/utils/idempotency.js). Under lag a POST
+// times out here, the player clicks again, and the server later runs both: a
+// downtime got filed 3 times. Now the SAME request (same url and body) reuses
+// its key until a definite answer comes back, so the server runs it once and
+// replays that answer to the copies. A definite answer retires the key:
+// sending the same thing again afterwards is a new submission. Call sites that
+// set their own key (chat sends, XP spends) keep it. Uploads (FormData) are
+// left out.
+const attempts = new Map(); // request signature -> key
+const signature = (c) => `${c.url} ${typeof c.data === 'string' ? c.data : JSON.stringify(c.data ?? null)}`;
+const retireAttempt = (config) => { if (config?._attempt) attempts.delete(config._attempt); };
+
 api.interceptors.request.use((config) => {
   // Caching is governed by each response's own Cache-Control header (see
   // back/server.fastify.js), forcing no-store on every request here used to
@@ -24,12 +37,16 @@ api.interceptors.request.use((config) => {
   // no-store for anything that hasn't explicitly opted into caching, so this
   // is safe to leave to the server now.
 
-  // Idempotency-Key is NOT set globally anymore: a fresh random UUID on
-  // every request meant retries never shared a key, so it protected nothing
-  // while still writing a DB row per mutation. Real idempotency is now
-  // opt-in, only for the handful of endpoints where a duplicate would cause
-  // real harm (XP spend): see utils/idempotencyKey.js, called explicitly at
-  // those call sites instead of here.
+  if ((config.method || 'get').toLowerCase() === 'post' && !(config.data instanceof FormData)
+      && !config.headers.has('Idempotency-Key')) {
+    const sig = signature(config);
+    if (!attempts.has(sig)) {
+      if (attempts.size >= 50) attempts.delete(attempts.keys().next().value); // oldest abandoned attempt
+      attempts.set(sig, crypto.randomUUID());
+    }
+    config.headers.set('Idempotency-Key', attempts.get(sig));
+    config._attempt = sig;
+  }
 
   // Uploads keep no limit (see timeout above): a big image on a slow phone can
   // legitimately take longer than 30 s.
@@ -55,9 +72,14 @@ const isRestartError = (e) => {
 let lastRestartNotice = 0;
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => { retireAttempt(response.config); return response; },
   async (error) => {
     const config = error.config;
+    // A 4xx is a definite answer too, except the server's "the first copy is
+    // still running" (keep the key, so the next try waits for that copy). No
+    // answer or a 5xx: the request may still run, so a retry must share the key.
+    const s = error.response?.status;
+    if (s && s < 500 && !error.response.headers?.['x-idempotent-pending']) retireAttempt(config);
     if (config && !axios.isCancel(error) && isSafe(config) && isRestartError(error)
         && typeof navigator !== 'undefined' && navigator.onLine !== false) {
       const attempt = config._retry || 0;
