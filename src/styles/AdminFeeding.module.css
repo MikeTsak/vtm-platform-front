@@ -95,6 +95,17 @@
 .kpi > span { display: block; font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
 .kpi > strong { display: block; font-size: 1.25rem; color: var(--kpi, var(--text-color)); overflow-wrap: anywhere; }
 .kpi > small { display: block; font-size: 0.72rem; color: var(--text-secondary); }
+
+/* Scarce-blood - / + stepper (ScarceBloodCard). 44px targets for phones. */
+.stepper { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+.stepBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2.75rem; min-height: 2.75rem;
+  background: var(--glass-inset); border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  color: var(--text-color); cursor: pointer;
+}
+.stepBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.stepValue { min-width: 2.5rem; text-align: center; font-size: 1.25rem; font-weight: 700; color: var(--kpi, var(--text-color)); }
 .kpiButton { cursor: pointer; text-align: left; font: inherit; color: inherit; }
 .kpiButton:hover { border-color: var(--kpi, var(--tint)); }
 

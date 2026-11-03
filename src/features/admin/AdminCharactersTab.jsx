@@ -336,6 +336,11 @@ export default function AdminCharactersTab({ users, onOpenEditor, onChanged }) {
   const handleToggleActive = (char) => updateSheetData(char, d => { d.is_active = !(d.is_active === true); return d; });
   const handleReset = (char) => { if(window.confirm(`Allow Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = true; return d; }); };
   const handleRevokeReset = (char) => { if(window.confirm(`Revoke Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = false; return d; }); };
+  // Any reason, not only Final Death (missing, a player change...). The server
+  // archives this character only when the player creates the new one, so the
+  // grant can still be revoked until then (back/services/characterRetirement.js).
+  const handleAllowNew = (char) => { if (window.confirm(`Let ${char.owner || 'the player'} start a new character? ${char.name} is archived when they create it; until then you can revoke this.`)) updateSheetData(char, d => { d.allow_new_character = true; return d; }); };
+  const handleRevokeNew = (char) => { if (window.confirm(`Revoke the new-character permission for ${char.name}?`)) updateSheetData(char, d => { d.allow_new_character = false; return d; }); };
 
   return (
     <div className={styles.stack12}>
@@ -494,6 +499,13 @@ export default function AdminCharactersTab({ users, onOpenEditor, onChanged }) {
                   </button>
                   <button className={`${styles.btn} ${data.allow_reset ? styles.btnGhost : styles.btnWarning}`} onClick={() => data.allow_reset ? handleRevokeReset(c) : handleReset(c)}>
                     {data.allow_reset ? 'Revoke Re-Roll' : 'Allow Re-Roll'}
+                  </button>
+                  <button
+                    className={`${styles.btn} ${data.allow_new_character ? styles.btnGhost : styles.btnWarning}`}
+                    onClick={() => data.allow_new_character ? handleRevokeNew(c) : handleAllowNew(c)}
+                    title="Lets the player start a new character for any reason (missing, a player change...). This one is archived when they create it."
+                  >
+                    {data.allow_new_character ? 'Revoke New Character' : 'Allow New Character'}
                   </button>
                   <button className={`${styles.btn} ${styles.btnWarning}`} onClick={() => requestRetire(c)} title="Final Death or leaving play: frees the player to make a new character">Retire</button>                </div>
               </div>

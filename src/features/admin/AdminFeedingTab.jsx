@@ -118,6 +118,31 @@ function Kpi({ label, value, sub, color, onClick }) {
   );
 }
 
+// Scarce blood (back routes/feeding.js): Baggers and Graverobbers who can hunt,
+// the suggestion (+1 for each beyond 2), and the extra difficulty their hunts
+// get on top of the division's, stepped with - / + (0 to max).
+function ScarceBloodCard({ data, busy, onSet }) {
+  const { count, suggested, extra, max } = data;
+  return (
+    <div className={styles.kpi} style={extra ? { '--kpi': '#ff5b5b' } : undefined}>
+      <span>Baggers and Graverobbers</span>
+      <strong>{count} active</strong>
+      <small>Suggested +{suggested} (+1 for each beyond 2)</small>
+      <div className={styles.stepper} role="group" aria-label="Extra hunting difficulty for Baggers and Graverobbers">
+        <button type="button" className={styles.stepBtn} disabled={busy || extra <= 0}
+          onClick={() => onSet(extra - 1)} aria-label="Lower the extra difficulty">
+          <FaGlyph name="fa-minus" size={12} />
+        </button>
+        <output className={styles.stepValue} aria-live="polite" title="Extra hunting difficulty">+{extra}</output>
+        <button type="button" className={styles.stepBtn} disabled={busy || extra >= max}
+          onClick={() => onSet(extra + 1)} aria-label="Raise the extra difficulty">
+          <FaGlyph name="fa-plus" size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Chips({ options, value, onChange }) {
   return (
     <div className={styles.chips} role="group">
@@ -622,6 +647,20 @@ export default function AdminFeedingTab() {
   const drawerFeeding = drawer?.type === 'feeding' ? data.log.find((f) => f.id === drawer.id) : null;
   const drawerPlayer = drawer?.type === 'player' ? players.find((p) => p.id === drawer.id) : null;
 
+  // One step of the scarce-blood extra: saved at once, no confirm per click.
+  const setScarceExtra = async (extra) => {
+    setBusy(true);
+    try {
+      await api.post('/admin/feeding/scarce-blood', { extra });
+      notify(`Bagger and Graverobber hunts are now +${extra} difficulty.`);
+      await load();
+    } catch (e) {
+      notify(formatApiError(e, 'Could not change the extra difficulty'), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirmRun = async (question, fn, okText, failText) => {
     if (!window.confirm(question)) return;
     setBusy(true);
@@ -700,6 +739,7 @@ export default function AdminFeedingTab() {
         <Kpi label="Herd · Safe · ST" value={`${stats.counts.herd || 0} · ${stats.counts.safe || 0} · ${stats.counts.manual || 0}`} color="#7ecfff" />
         <Kpi label="Ghouls unfed" value={`${ghoulsUnfed} / ${ghoulList.length}`} color={ghoulsUnfed ? '#ffb347' : undefined}
           onClick={() => setPlayerFilter('ghoulsUnfed')} sub="show owners" />
+        {stats.scarceBlood && <ScarceBloodCard data={stats.scarceBlood} busy={busy} onSet={setScarceExtra} />}
       </div>
 
       {/* ── Recent feedings ── */}

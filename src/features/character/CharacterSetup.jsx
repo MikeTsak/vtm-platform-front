@@ -17,7 +17,7 @@ import SkillsStep from './characterSetupSteps/SkillsStep';
 import AdvantagesStep from './characterSetupSteps/AdvantagesStep';
 import MoralityStep from './characterSetupSteps/MoralityStep';
 import ReviewStep from './characterSetupSteps/ReviewStep';
-import { isOutOfPlay } from '../../utils/characterStatus';
+import { canStartNew } from '../../utils/characterStatus';
 
 /* ---------- Config ---------- */
 // Attributes / Skills
@@ -199,9 +199,10 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     api.get('/characters/me').then(r => {
       const char = r.data.character;
       setExisting(char);
-      // Out of play (Final Death, left, exiled): the player builds a brand-new
-      // character (the server retires the old one), never a re-roll of it.
-      if (isOutOfPlay(char)) return;
+      // Out of play (Final Death, left, exiled) or a Storyteller allowed a new
+      // character: the player builds a brand-new one (the server retires the
+      // old one), never a re-roll of it.
+      if (canStartNew(char)) return;
 
       // If the character exists but the sheet is empty (Admin Wiped it) OR an admin allowed it, automatically open the wizard!
       if (char && char.sheet && char.sheet.allow_reset === true) {
@@ -469,7 +470,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
 
   /* ---------- Render ---------- */
 
-  if (existing && !isOutOfPlay(existing) && !isRebuilding && !isTesting) {
+  if (existing && !canStartNew(existing) && !isRebuilding && !isTesting) {
     return (
       <div className={styles.sheetCard}>
         <h3 className={styles.cardTitle}>Your Character</h3>

@@ -611,8 +611,12 @@ export const clanTint = (clan) => {
 // Drop-in replacement for the per-file CLAN_COLORS string maps that used to be
 // copy-pasted across the admin tabs, CharacterView, etc. Unknown/blank clans
 // are simply absent, so callers keep their own `|| 'var(--text-secondary)'`.
+// Keyed by the canonical clans only (CLAN_COLORS): callers list its keys as
+// "the clans" (crest pickers, the SchreckNet theme list). Adding CLAN_THEME_RULES'
+// alias keys (Banu_Haqim, lasombra, Ministry) on 2026-11-02 made SchreckNet crash
+// on load for everyone: its theme list reads CLAN_PALETTES[key], which has none.
 export const CLAN_HEX = Object.fromEntries(
-  [...new Set([...Object.keys(CLAN_COLORS), ...Object.keys(CLAN_THEME_RULES)])].map((clan) => [clan, clanTint(clan)])
+  Object.keys(CLAN_COLORS).map((clan) => [clan, clanTint(clan)])
 );
 
 export const getClanPalette = (clan) => {

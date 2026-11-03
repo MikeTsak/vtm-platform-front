@@ -99,6 +99,15 @@
   margin-bottom: 1.25rem;
 }
 
+/* Scarce-blood extra on the Difficulty chip (FeedingPage DifficultyChip):
+   red, explained on hover; not a control, so no pointer. */
+.scarceExtra { color: #ff5b5b; font-weight: 700; cursor: help; }
+/* Touch screens can't hover: the explanation shows as its own line instead. */
+.scarceNote { display: none; }
+@media (hover: none) {
+  .scarceNote { display: block; flex-basis: 100%; color: #ff8a8a; font-size: 0.8rem; line-height: 1.35; }
+}
+
 .statChip {
   display: inline-flex;
   align-items: center;

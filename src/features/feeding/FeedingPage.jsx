@@ -97,6 +97,31 @@ function StatChip({ icon, color, children }) {
   );
 }
 
+// "Difficulty 6 = 4 + 2": the division's difficulty plus the Storytellers'
+// scarce-blood extra for Baggers and Graverobbers (back routes/feeding.js), the
+// extra in red. Not clickable: hovering explains it, and on touch screens
+// (no hover) the explanation is shown as a line of text instead.
+const SCARCE_REASON = 'Additional difficulty: too many Baggers and Graverobbers in the city';
+// A rolled hunt stores the total difficulty: anything above its division's is the extra.
+const splitDifficulty = (division, total) => {
+  const base = Math.min(total, HUNTING_DIFFICULTY[division]?.difficulty ?? total);
+  return { base, extra: total - base };
+};
+function DifficultyChip({ base, extra = 0 }) {
+  const total = base + extra;
+  return (
+    <>
+      <StatChip icon={FEEDING_ICONS.gauge} color={difficultyColor(total)}>
+        Difficulty {total}
+        {extra > 0 && (
+          <> = {base} + <span className={styles.scarceExtra} title={SCARCE_REASON} aria-label={`${extra}. ${SCARCE_REASON}`}>{extra}</span></>
+        )}
+      </StatChip>
+      {extra > 0 && <span className={styles.scarceNote}>+{extra}: {SCARCE_REASON}</span>}
+    </>
+  );
+}
+
 // Safety (0 to 10, green=safe -> red=exposed) and Hunting Difficulty (2 to 7,
 // blue=easiest -> orange=hardest) are two unrelated numbers with two
 // unrelated meanings (see the in-app copy below), so each gets its own
@@ -220,7 +245,7 @@ function PendingResult({ status }) {
       <div className={styles.statChipRow}>
         <StatChip icon={FEEDING_ICONS.diceD20}>{feeding.pool_label} · Pool {feeding.dice_pool}</StatChip>
         {feeding.bonus_dice > 0 && <StatChip icon={FEEDING_ICONS.locationDot}>+{feeding.bonus_dice} Chasse</StatChip>}
-        <StatChip icon={FEEDING_ICONS.gauge} color={difficultyColor(feeding.difficulty)}>Difficulty {feeding.difficulty}</StatChip>
+        <DifficultyChip {...splitDifficulty(feeding.division, feeding.difficulty)} />
       </div>
 
       <div className={`${styles.outcomeBanner} ${TIER_CLASS[feeding.outcome]}`}>
@@ -459,9 +484,7 @@ function Picker({ status }) {
                   Hunting in {divisionName(division)}{division === status.myDivision ? ' (your domain)' : ''}
                 </StatChip>
                 {selectedDifficulty != null && (
-                  <StatChip icon={FEEDING_ICONS.gauge} color={difficultyColor(selectedDifficulty)}>
-                    Difficulty {selectedDifficulty}
-                  </StatChip>
+                  <DifficultyChip base={selectedDifficulty} extra={status.scarceBloodExtra || 0} />
                 )}
               </div>
             )}
@@ -681,6 +704,15 @@ function FeedingPageInner({ status }) {
   }
   if (status.noCharacter) {
     return <div className={styles.gate}><p className={styles.subtitle}>You need a character before you can feed.</p></div>;
+  }
+  // A new character can't feed until a Storyteller activates it (the server refuses too).
+  if (status.deactivated) {
+    return (
+      <>
+        <Vitals status={status} />
+        <div className={styles.gate}><p className={styles.subtitle}>Your character is deactivated. A Storyteller has to activate it before you can feed.</p></div>
+      </>
+    );
   }
 
   return (
