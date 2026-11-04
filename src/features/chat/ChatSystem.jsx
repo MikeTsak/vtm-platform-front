@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { AuthCtx } from '../../core/AuthContext';
 import { roleFlags } from '../../core/useRole';
 import api, { formatApiError } from '../../core/api';
+import ForwardPicker from './ForwardPicker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/ChatSystem.module.css';
@@ -1269,6 +1270,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [reactionPickerFor, setReactionPickerFor] = useState(null);
   const [fullReactionPickerFor, setFullReactionPickerFor] = useState(null);
   const [viewingReactionsMsg, setViewingReactionsMsg] = useState(null);
+  const [forwardingMsg, setForwardingMsg] = useState(null);
   const [selectedReactionTab, setSelectedReactionTab] = useState('all');
   const lastTapRef = useRef({});
   const holdTimerRef = useRef(null);
@@ -1403,7 +1405,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
         sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
       }));
     } else if (c.type === 'user') {
       res = await api.get(`/chat/history/${c.id}?${qs}`);
@@ -1411,20 +1413,20 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         id: m.id, body: m.body, created_at: m.created_at,
         read_at: m.read_at, delivered_at: m.delivered_at,
         sender_id: m.sender_id,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
       }));
     } else if (isAdmin) {
       res = await api.get(`/admin/chat/npc-history/${c.id}/${selectedPlayerId}?${qs}`);
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, type: m.type, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
       }));
     } else {
       res = await api.get(`/chat/npc-history/${c.id}?${qs}`);
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at,
         sender_id: m.from_side === 'user' ? currentUser.id : 'npc', _from: m.from_side,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
       }));
     }
     msgs.sort(byTime);
@@ -2122,6 +2124,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const usersNoChar = useMemo(() => filteredUsers.filter(u => !isUserActiveContact(u) && !u.char_id && u.is_active !== false && u.role === 'admin'), [filteredUsers]);
   // Retired characters you talked with: their old threads, read-only.
   const usersPast = useMemo(() => filteredUsers.filter(u => u.is_archived), [filteredUsers]);
+  // Chats a message can be forwarded to (ForwardPicker): players still in play,
+  // groups, and a player's NPC threads (a Storyteller speaks in those per
+  // player, so they aren't offered to one). Never the chat it's in.
+  const forwardTargets = useMemo(() => [
+    ...users.filter((u) => !u.is_archived).map((u) => ({ key: `user-${u.id}`, type: 'user', id: u.id, label: u.char_name || u.display_name })),
+    ...groups.map((g) => ({ key: `group-${g.id}`, type: 'group', id: g.id, label: g.name })),
+    ...(isAdmin ? [] : npcs.map((n) => ({ key: `npc-${n.id}`, type: 'npc', id: n.id, label: n.name }))),
+  ].filter((t) => !(t.type === selectedContact?.type && t.id === selectedContact?.id)), [users, groups, npcs, isAdmin, selectedContact]);
   const [pastOpen, setPastOpen] = useState(false);
 
   const filteredNpcs = useMemo(() => {
@@ -2601,7 +2611,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     // after this message, it's been "answered" and can no longer be edited
     // (delete stays unaffected, same as the API).
     const answeredSince = canEditDelete && messages.some(m => new Date(m.created_at).getTime() > createdAt && !isMine(m));
-    return { mine, sent, canEditDelete, canEdit: canEditDelete && !answeredSince, canReply: sent && canSend && editingMsgId !== item.id };
+    return {
+      mine, sent, canEditDelete,
+      canEdit: canEditDelete && !answeredSince && !item.forwarded_from,
+      canReply: sent && canSend && editingMsgId !== item.id,
+      canForward: sent && canSend && item.type !== 'system',
+    };
   };
 
   const handleCopyMessage = useCallback(async (text) => {
@@ -2616,11 +2631,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const renderActionSheet = () => {
     const item = actionSheetMsg;
-    const { mine, sent, canEditDelete, canEdit, canReply } = messagePerms(item);
+    const { mine, sent, canEditDelete, canEdit, canReply, canForward } = messagePerms(item);
     const close = () => setActionSheetMsg(null);
     const run = (fn) => () => { close(); fn(); };
     const actions = [
       canReply && { icon: 'reply', label: 'Reply', fn: () => startReply(item) },
+      canForward && { icon: 'forward', label: 'Forward', fn: () => setForwardingMsg(item) },
       item.body && { icon: 'content_copy', label: 'Copy text', fn: () => handleCopyMessage(item.body) },
       reactionsByMsgId[item.id]?.length > 0 && { icon: 'groups', label: 'See reactions', fn: () => { setSelectedReactionTab('all'); setViewingReactionsMsg(item); } },
       canEdit && !editingMsgId && { icon: 'edit', label: 'Edit', fn: () => { setEditingMsgId(item.id); setEditBody(item.body); } },
@@ -3415,7 +3431,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   </div>
                 );
 
-                const { mine, canEditDelete, canEdit, canReply } = messagePerms(item);
+                const { mine, canEditDelete, canEdit, canReply, canForward } = messagePerms(item);
                 const isGroupNotMine = selectedContact.type === 'group' && !mine;
                 // Hold-to-grow emoji: shown bare and big, without the bubble.
                 const bigEmoji = !!item.emoji_size && !!item.body && !item.attachment_id;
@@ -3481,6 +3497,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                             ? `relative w-fit max-w-full select-none leading-none rounded ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''}`
                             : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border-r border-t border-b border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
                         >
+
+                          {/* Forwarded copy: its original author, named by the server */}
+                          {item.forwarded_from && (
+                            <span className={`flex items-center gap-1 mb-1 text-[11px] italic ${mine ? 'text-white/75' : 'text-on-surface-variant'}`}>
+                              <span className="material-symbols-outlined text-[14px] not-italic" aria-hidden="true">forward</span>
+                              Forwarded from {item.forwarded_from}
+                            </span>
+                          )}
 
                           {/* Quoted message this one replies to */}
                           {item.reply && (
@@ -3598,6 +3622,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           {canReply && (
                             <button type="button" onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
                           )}
+                          {canForward && (
+                            <button type="button" onClick={() => setForwardingMsg(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Forward</button>
+                          )}
                           {!String(item.id).startsWith('temp_') && (
                             <button
                               type="button"
@@ -3666,6 +3693,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
                         >
                           <span className="material-symbols-outlined text-[20px]">reply</span>
+                        </button>
+                      )}
+                      {canForward && (
+                        <button
+                          type="button"
+                          onClick={() => setForwardingMsg(item)}
+                          title="Forward"
+                          aria-label="Forward this message"
+                          className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">forward</span>
                         </button>
                       )}
                       {item.body && (
@@ -4016,6 +4054,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         )}
 
         {/* Message Reactions Modal */}
+        {forwardingMsg && (
+          <ForwardPicker
+            forwardOf={{ kind: { user: 'dm', group: 'group', npc: 'npc' }[selectedContact?.type], id: forwardingMsg.id }}
+            targets={forwardTargets}
+            onClose={() => setForwardingMsg(null)}
+          />
+        )}
         {viewingReactionsMsg && createPortal(
           <div
             className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
