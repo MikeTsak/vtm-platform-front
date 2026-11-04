@@ -17,41 +17,8 @@
  *   Blur        none (solid clean surfaces)
  */
 
-/* ═══════════════════════════════════════════════
-   1. DESIGN TOKENS
-   ═══════════════════════════════════════════════ */
-:root {
-  --glass-bg: #171326;
-  --glass-bg-hover: #201a35;
-  --glass-inset: #0f0d19;
-  --glass-border: rgba(157, 124, 255, 0.22);
-  --glass-border-highlight: rgba(157, 124, 255, 0.5);
-  --glass-blur: none;
-  --glass-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-
-  --accent-purple: #9d7cff;
-  --accent-purple-glow: rgba(157, 124, 255, 0.35);
-  --accent-purple-dim: rgba(157, 124, 255, 0.15);
-
-  --text-primary: #f1effa;
-  --text-secondary: #a6a0bd;
-  --text-muted: #6f6987;
-
-  --color-success: #00e676;
-  --color-error: #ff5252;
-  --color-warn: #ffcc00;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-
-  --sidebar-w: 252px;
-  --sidebar-w-collapsed: 68px;
-  --topbar-h: 60px;
-  --nav-h: 64px; /* height of the global site <Nav /> the admin sits under */
-  --mobile-bar-h: 64px; /* bottom category bar on phones */
-}
+/* 1. DESIGN TOKENS: in adminTokens.css (shared with pages that skip this file). */
+@import './adminTokens.css';
 
 /* ═══════════════════════════════════════════════
    2. ROOT SHELL

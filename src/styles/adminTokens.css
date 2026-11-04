@@ -1,0 +1,39 @@
+/* src/styles/adminTokens.css
+   Admin design tokens. Plain (global) CSS, not a module, so a page can import it
+   for its side effect: Admin.module.css @imports it, and pages reached by their
+   own URL (CharacterEdit) import it directly. A CSS module imported only for its
+   side effect is dropped by the build, which left a refreshed
+   /admin/character/:id with no backgrounds or borders (2026-11-04). */
+
+:root {
+  --glass-bg: #171326;
+  --glass-bg-hover: #201a35;
+  --glass-inset: #0f0d19;
+  --glass-border: rgba(157, 124, 255, 0.22);
+  --glass-border-highlight: rgba(157, 124, 255, 0.5);
+  --glass-blur: none;
+  --glass-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+
+  --accent-purple: #9d7cff;
+  --accent-purple-glow: rgba(157, 124, 255, 0.35);
+  --accent-purple-dim: rgba(157, 124, 255, 0.15);
+
+  --text-primary: #f1effa;
+  --text-secondary: #a6a0bd;
+  --text-muted: #6f6987;
+
+  --color-success: #00e676;
+  --color-error: #ff5252;
+  --color-warn: #ffcc00;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --sidebar-w: 252px;
+  --sidebar-w-collapsed: 68px;
+  --topbar-h: 60px;
+  --nav-h: 64px; /* height of the global site <Nav /> the admin sits under */
+  --mobile-bar-h: 64px; /* bottom category bar on phones */
+}

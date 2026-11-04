@@ -12,6 +12,10 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/CharacterEdit.module.css';
+// The admin design tokens (--glass-bg, --accent-purple, ...) the styles above
+// use. Opened from Admin they were already loaded; opened directly (a refresh
+// of /admin/character/:id) the page lost every background and border.
+import '../../styles/adminTokens.css';
 import * as DiscDataNS from '../../data/disciplines';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
 import { RITUALS } from '../../data/rituals';
@@ -25,6 +29,7 @@ import { calculateRitualCost } from '../../utils/xpCosts';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { normalizeTouchstoneArray } from './sheetShape';
 import { vampireAges, formatDate } from '../../utils/ages';
+import { removePowerAndDot } from '../../utils/disciplinePowers';
 
 /* ------------------------------------------------------------------ */
 /* Static data / pure helpers (module scope: computed once)          */
@@ -428,10 +433,8 @@ export default function CharacterEdit() {
     d.disciplinePowers[discName] = d.disciplinePowers[discName] || [];
     d.disciplinePowers[discName].push({ level: power.level, name: power.name, id: power.id });
   });
-  const removePower = (discName, idx) => updateDraft(d => {
-    const list = d.disciplinePowers?.[discName];
-    if (Array.isArray(list)) list.splice(idx, 1);
-  });
+  // One power per dot: its dot goes with it, so the XP impact refunds it.
+  const removePower = (discName, idx) => updateDraft(d => { removePowerAndDot(d, discName, idx); });
   const swapPower = (discName, idx, power) => updateDraft(d => {
     const list = d.disciplinePowers?.[discName];
     if (Array.isArray(list) && list[idx]) list[idx] = { level: power.level, name: power.name, id: power.id };
@@ -1196,7 +1199,7 @@ function DisciplinesSection({ sheet, discKinds, setDiscKinds, setDisciplineDots,
               <div key={idx} className={styles.powerRow}>
                 <span style={{ flex: 1 }}>{p.name || p.id}</span>
                 <button className={styles.smallBtn} onClick={() => openPowerSwap(name, idx)}>Swap</button>
-                <button className={styles.iconBtn} onClick={() => removePower(name, idx)} title="Remove power">✕</button>
+                <button className={styles.iconBtn} onClick={() => removePower(name, idx)} title="Remove power and its dot (refunded in XP or Refund mode)">✕</button>
               </div>
             ))}
 
