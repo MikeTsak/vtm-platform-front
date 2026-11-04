@@ -251,6 +251,9 @@ const asUserContact = (u) => ({
   is_admin: typeof u.is_admin !== 'undefined' ? !!u.is_admin : (u.role === 'admin' || u.permission_level === 'admin'),
   char_id: u.char_id ?? null,
   image_url: u.image_url ?? null,
+  avatar_url: u.avatar_url ?? null,
+  avatar_url_thumb: u.avatar_url_thumb ?? null,
+  has_avatar: typeof u.has_avatar !== 'undefined' ? Boolean(u.has_avatar) : undefined,
   titles: u.titles || [],
   court_status: u.court_status ?? null,
   unread_count: u.unread_count || 0,
@@ -268,6 +271,9 @@ const asNpcContact = (n) => ({
   name: n.name,
   clan: n.clan,
   image_url: n.image_url ?? null,
+  avatar_url: n.avatar_url ?? null,
+  avatar_url_thumb: n.avatar_url_thumb ?? null,
+  has_avatar: typeof n.has_avatar !== 'undefined' ? Boolean(n.has_avatar) : undefined,
   titles: n.titles || [],
   court_status: n.court_status ?? null,
   last_message_at: n.last_message_at ? new Date(n.last_message_at).getTime() : 0,
@@ -2737,9 +2743,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               <div className="relative mb-2">
                 <div className={`w-20 h-20 ${c.type === 'npc' ? 'rounded-lg' : 'rounded-full'} bg-surface-container-highest border border-outline-variant/50 overflow-hidden flex items-center justify-center`}>
                   {c.type === 'user' ? (
-                    <Avatar userId={c.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(c.clan) || '/img/ATT-logo(1).webp'} />
+                    <Avatar userId={c.id} hasAvatar={c.has_avatar} avatarUrl={c.avatar_url_thumb || c.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(c.clan) || '/img/ATT-logo(1).webp'} />
                   ) : c.type === 'npc' ? (
-                    <Avatar npcId={c.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} fallback={localSymlogo(c.clan) || '/img/ATT-logo(1).webp'} />
+                    <Avatar npcId={c.id} hasAvatar={c.has_avatar} avatarUrl={c.avatar_url_thumb || c.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} fallback={localSymlogo(c.clan) || '/img/ATT-logo(1).webp'} />
                   ) : (
                     <GroupIconGlyph icon={c.icon} size={56} />
                   )}
@@ -2854,23 +2860,28 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             {c.type === 'group' && (
               <>
                 <div className={sectionLabel}>Members ({headerGroupMembers.length})</div>
-                {headerGroupMembers.map(m => (
-                  <div key={m.id} className={`flex items-center gap-3 px-4 min-h-[56px] ${m.is_archived ? 'opacity-60' : ''}`}>
-                    <div className="relative shrink-0">
-                      <div className={`w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest ${m.is_archived ? 'grayscale' : ''}`}>
-                        <Avatar userId={m.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(m.clan) || '/img/ATT-logo(1).webp'} />
+                {headerGroupMembers.map(m => {
+                  const u = users.find(x => x.id === m.id);
+                  const hasAvatar = m.has_avatar ?? u?.has_avatar;
+                  const avatarUrl = m.avatar_url_thumb || m.avatar_url || u?.avatar_url_thumb || u?.avatar_url;
+                  return (
+                    <div key={m.id} className={`flex items-center gap-3 px-4 min-h-[56px] ${m.is_archived ? 'opacity-60' : ''}`}>
+                      <div className="relative shrink-0">
+                        <div className={`w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest ${m.is_archived ? 'grayscale' : ''}`}>
+                          <Avatar userId={m.id} hasAvatar={hasAvatar} avatarUrl={avatarUrl} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(m.clan) || '/img/ATT-logo(1).webp'} />
+                        </div>
+                        <OnlineDot online={isUserOnline(m.id)} />
                       </div>
-                      <OnlineDot online={isUserOnline(m.id)} />
+                      <div className="min-w-0 flex-1 flex flex-col">
+                        <span className="text-[15px] text-on-surface truncate">{m.char_name || m.display_name}</span>
+                        {m.is_archived
+                          ? <span className="text-[11px] text-on-surface-variant/70">{m.is_deceased ? 'Met Final Death' : 'Gone from SchreckNet'}</span>
+                          : <StatusLine titles={m.titles} status={m.court_status} className="text-[11px] text-on-surface-variant/70" />}
+                      </div>
+                      {m.id === c.created_by && <span className="text-[11px] text-on-surface-variant/60 shrink-0">Founder</span>}
                     </div>
-                    <div className="min-w-0 flex-1 flex flex-col">
-                      <span className="text-[15px] text-on-surface truncate">{m.char_name || m.display_name}</span>
-                      {m.is_archived
-                        ? <span className="text-[11px] text-on-surface-variant/70">{m.is_deceased ? 'Met Final Death' : 'Gone from SchreckNet'}</span>
-                        : <StatusLine titles={m.titles} status={m.court_status} className="text-[11px] text-on-surface-variant/70" />}
-                    </div>
-                    {m.id === c.created_by && <span className="text-[11px] text-on-surface-variant/60 shrink-0">Founder</span>}
-                  </div>
-                ))}
+                  );
+                })}
                 <button type="button" className={`${row} mt-2`} onClick={() => openManageGroup()}>
                   <span className="material-symbols-outlined text-[22px] text-on-surface-variant">settings</span>
                   Manage group
@@ -3021,7 +3032,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
               {isAdmin
                 ? <span className="material-symbols-outlined text-primary text-[22px]">shield_person</span>
-                : <Avatar userId={currentUser?.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(myChar?.clan) || '/img/ATT-logo(1).webp'} />}
+                : <Avatar userId={currentUser?.id} hasAvatar={currentUser?.has_avatar} avatarUrl={currentUser?.avatar_url_thumb || currentUser?.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(myChar?.clan) || '/img/ATT-logo(1).webp'} />}
             </div>
             <div className="min-w-0">
               <div className="text-on-surface-variant text-[10px] uppercase tracking-widest opacity-70">Writing as</div>
@@ -3091,7 +3102,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
                         <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+                          <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
                         </div>
                         <OnlineDot online={isUserOnline(u.id)} />
                       </div>
@@ -3130,7 +3141,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="relative shrink-0">
                             <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
-                              <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+                              <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
                             </div>
                             <OnlineDot online={isUserOnline(u.id)} />
                           </div>
@@ -3169,7 +3180,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-70`}>
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-8 h-8 shrink-0 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 grayscale">
-                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+                            <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
                           </div>
                           <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name || u.display_name}</span>
                         </div>
@@ -3199,7 +3210,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
                         <div className="w-8 h-8 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                          <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+                          <Avatar npcId={n.id} hasAvatar={n.has_avatar} avatarUrl={n.avatar_url_thumb || n.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
                         </div>
                         {!isAdmin && <OnlineDot online={storytellerOnline} />}
                       </div>
@@ -3296,9 +3307,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 <div className="relative shrink-0">
                   <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
                     {selectedContact.type === 'user' ? (
-                      <Avatar userId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
+                      <Avatar userId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
                     ) : selectedContact.type === 'npc' ? (
-                      <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
+                      <Avatar npcId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
                     ) : (
                       <GroupIconGlyph icon={selectedContact.icon} size={28} />
                     )}
@@ -3453,12 +3464,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
                         {(() => {
                           if (selectedContact.type === 'group') {
-                            const sender = currentGroupMembers.find(m => m.id === item.sender_id);
-                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).webp'} />;
+                            const sender = currentGroupMembers.find(m => m.id === item.sender_id) || users.find(u => u.id === item.sender_id);
+                            return <Avatar userId={item.sender_id} hasAvatar={sender?.has_avatar} avatarUrl={sender?.avatar_url_thumb || sender?.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).webp'} />;
                           } else if (item.sender_id === 'npc') {
-                            return <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
+                            return <Avatar npcId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
                           } else {
-                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
+                            const sender = (selectedContact.type === 'user' && selectedContact.id === item.sender_id) ? selectedContact : users.find(u => u.id === item.sender_id);
+                            return <Avatar userId={item.sender_id} hasAvatar={sender?.has_avatar} avatarUrl={sender?.avatar_url_thumb || sender?.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
                           }
                         })()}
                       </div>

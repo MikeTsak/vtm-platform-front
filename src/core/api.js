@@ -146,4 +146,26 @@ export function formatApiError(e, fallback = 'Operation failed') {
   return parts.join(': ');
 }
 
+// In-flight GET deduplication for concurrent identical requests (e.g. /characters/me on cold page load)
+const inflightGetRequests = new Map();
+const originalRequest = api.request.bind(api);
+api.request = function (configOrUrl, maybeConfig) {
+  const config = typeof configOrUrl === 'string' ? { ...(maybeConfig || {}), url: configOrUrl } : { ...configOrUrl };
+  const method = (config.method || 'get').toLowerCase();
+
+  if (method === 'get' && typeof config.url === 'string' && config.url.includes('/characters/me')) {
+    const key = config.url;
+    if (inflightGetRequests.has(key)) {
+      return inflightGetRequests.get(key);
+    }
+    const promise = originalRequest(configOrUrl, maybeConfig).finally(() => {
+      inflightGetRequests.delete(key);
+    });
+    inflightGetRequests.set(key, promise);
+    return promise;
+  }
+
+  return originalRequest(configOrUrl, maybeConfig);
+};
+
 export default api;

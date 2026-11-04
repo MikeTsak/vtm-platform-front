@@ -4,14 +4,14 @@ import styles from './Avatar.module.css';
 import AvatarCropperModal from './AvatarCropperModal';
 
 const avatarTimestamps = new Map();
+const failedAvatarCache = new Set();
 
 export default function Avatar({ userId, npcId, identityId, retainerId, clan, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, avatarUrl, hasAvatar, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).webp' }) {
-  const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
+  const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : (identityId ? `i_${identityId}` : '')));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [imgError, setImgError] = useState(false);
-  const [retryTag, setRetryTag] = useState(0);
+  const [imgError, setImgError] = useState(() => Boolean(entityKey && failedAvatarCache.has(entityKey) && !avatarTimestamps.get(entityKey)));
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -21,13 +21,13 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
   let thumbSrcUrl = null;
 
   React.useEffect(() => {
-    setImgError(false);
-    setRetryTag(0);
+    setImgError(Boolean(entityKey && failedAvatarCache.has(entityKey) && !timestamp));
   }, [entityKey, timestamp]);
 
   React.useEffect(() => {
     const handleAvatarUpdated = (e) => {
       if (e.detail.entityKey === entityKey) {
+        failedAvatarCache.delete(entityKey);
         setTimestamp(e.detail.newTs);
       }
     };
@@ -39,19 +39,20 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
   // one for the small `?size=thumb` variant the backend can redirect to
   // (see migrations/list/0011_avatar_thumb_urls.js), kept as one helper so
   // the `?t=` cache-busting param stays in sync between the two.
-  const buildQuery = (extra, tag = retryTag) => {
+  const buildQuery = (extra) => {
     const params = [];
     if (timestamp) params.push(`t=${timestamp}`);
-    if (tag) params.push(`r=${tag}`);
     if (extra) params.push(extra);
     return params.length ? `?${params.join('&')}` : '';
   };
+
+  const isKnownMissing = (hasAvatar === false || (Boolean(entityKey) && failedAvatarCache.has(entityKey))) && !timestamp;
 
   if (!imgError && !previewUrl) {
     if (avatarUrl) {
       srcUrl = avatarUrl;
       thumbSrcUrl = avatarUrl;
-    } else if (hasAvatar === false && !timestamp) {
+    } else if (isKnownMissing) {
       srcUrl = fallback || '/img/ATT-logo(1).webp';
       thumbSrcUrl = null;
     } else if (userId || npcId || retainerId || identityId) {
@@ -59,24 +60,6 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
       thumbSrcUrl = `${baseUrl}${entityPath}/avatar${buildQuery('size=thumb')}`;
     }
   }
-
-  // One failed load (CDN/network blip, busy server right after login) used to
-  // pin the fallback until the component remounted. Probe the real avatar once
-  // in the background and swap it back in if it loads; an entity with no
-  // avatar just costs one extra 404.
-  const usesEntityUrl = !previewUrl && !avatarUrl && !(hasAvatar === false && !timestamp) && Boolean(userId || npcId || retainerId || identityId);
-  React.useEffect(() => {
-    if (!imgError || retryTag || !usesEntityUrl) return;
-    let cancelled = false;
-    const tag = Date.now();
-    const timer = setTimeout(() => {
-      const probe = new Image();
-      probe.onload = () => { if (!cancelled) { setRetryTag(tag); setImgError(false); } };
-      probe.src = `${baseUrl}${entityPath}/avatar${buildQuery('', tag)}`;
-    }, 3000);
-    return () => { cancelled = true; clearTimeout(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgError, retryTag, usesEntityUrl, entityKey]);
 
   const handleClick = () => {
     if (editable && fileInputRef.current) {
@@ -131,6 +114,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
       });
 
       const newTs = Date.now();
+      if (entityKey) failedAvatarCache.delete(entityKey);
       avatarTimestamps.set(entityKey, newTs);
       setTimestamp(newTs); // Force reload image
       window.dispatchEvent(new CustomEvent('avatar-updated', { detail: { entityKey, newTs } }));
@@ -219,7 +203,10 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
               boxSizing: 'border-box'
             } : {})
           }}
-          onError={() => setImgError(true)}
+          onError={() => {
+            if (entityKey && !timestamp) failedAvatarCache.add(entityKey);
+            setImgError(true);
+          }}
         />
         {editable && (
           <div className={styles.editOverlay}>
