@@ -3,7 +3,7 @@ import styles from '../../styles/Admin.module.css';
 import G6 from '@antv/g6';
 import { CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 
-// Same shape as ChatStatsTab's exclusion rule: don't let removed characters clutter the graph.
+// Exclusion rule: don't let removed characters clutter the graph.
 const isExcludedChar = (c) => c && (c.is_deceased || c.is_hidden || c.is_missing || c.is_exiled || c.is_left || c.is_called);
 
 export default function RelationshipWeb({

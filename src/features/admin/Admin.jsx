@@ -11,7 +11,7 @@ import { useMediaQuery, ADMIN_MOBILE_BREAKPOINT as MOBILE_BREAKPOINT } from '../
 // Lazy-loaded Core & Modal Components
 const AdminLogs = lazyWithRetry(() => import('./AdminLogs'));
 const AdminJobsTab = lazyWithRetry(() => import('./AdminJobsTab'));
-const ChatStatsTab = lazyWithRetry(() => import('./ChatStatsTab'));
+const StatsTab = lazyWithRetry(() => import('./StatsTab'));
 
 // Lazy-loaded Tab Components (On-demand chunks)
 const AdminHomeTab = lazyWithRetry(() => import('./AdminHomeTab'));
@@ -748,7 +748,6 @@ export default function Admin() {
   const [allMessages, setAllMessages] = useState([]); // Used by chat + stats
 
   const [allGroupMessages, setAllGroupMessages] = useState([]);
-  const [allEmailMessages, setAllEmailMessages] = useState([]);
   const [chatGroups, setChatGroups] = useState([]);
 
   const [xpLogs, setXpLogs] = useState([]);
@@ -791,7 +790,7 @@ export default function Admin() {
     setLoadProgress(0);
     
     let completed = 0;
-    const total = 14;
+    const total = 12;
     const inc = () => {
       completed++;
       setLoadProgress(Math.round((completed / total) * 100));
@@ -801,7 +800,6 @@ export default function Admin() {
       api.get('/admin/xp-logs?limit=all').then(res => setXpLogs(res.data.logs || res.data || [])).catch(e => console.error('Failed XP', e)).finally(inc),
       api.get('/admin/chat/groups/messages/all').then(res => setAllGroupMessages(res.data.messages || [])).catch(e => console.error('Failed group msgs', e)).finally(inc),
       api.get('/admin/chat/groups').then(res => setChatGroups(res.data.groups || [])).catch(e => console.error('Failed groups', e)).finally(inc),
-      api.get('/admin/emails/messages/all').then(res => setAllEmailMessages(res.data.messages || [])).catch(e => console.error('Failed emails', e)).finally(inc),
       api.get('/admin/premonitions').then(res => setPremonitions(res.data.premonitions || [])).catch(e => console.error('Failed prems', e)).finally(inc),
       api.get('/admin/dice/rolls?limit=all').then(res => setDiceRolls(res.data.rolls || [])).catch(e => console.error('Failed dice', e)).finally(inc),
       api.get('/admin/characters').then(res => setCharacters(res.data.characters || [])).catch(e => console.error('Failed chars', e)).finally(inc),
@@ -985,22 +983,7 @@ async function grantXP(character_id, delta) {
     discord:        () => <AdminDiscordTab users={users} />,
     // Intelligence
     activity: () => <ActivityHeatmap users={users} />,
-    stats:    () => (
-      <ChatStatsTab
-        directMessages={allMessages}
-        npcMessages={allNpcMessages}
-        groupMessages={allGroupMessages}
-        emailMessages={allEmailMessages}
-        chatGroups={chatGroups}
-        npcs={npcs}
-        users={users}
-        xpLogs={xpLogs}
-        premonitions={premonitions}
-        diceRolls={diceRolls}
-        downtimes={downtimes}
-        characters={characters}
-      />
-    ),
+    stats:    () => <StatsTab />,
     chat:     () => (
       <AdminChatLogsTab
         messages={allMessages}

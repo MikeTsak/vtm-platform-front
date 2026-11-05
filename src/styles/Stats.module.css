@@ -1,0 +1,206 @@
+/* Admin Stats page (features/admin/StatsTab.jsx) and its exported images.
+ *
+ * The cards on the page ARE the poster preview: one fixed dark palette, not the
+ * site theme, so what you tick is what you get. Every size is in em, so a card
+ * scales with the font-size of where it sits: the page, the wide poster, or a
+ * 1080 px square. html2canvas draws the images: no color-mix(), no CSS filters,
+ * no object-fit here (it ignores or mis-draws them). Palette checked with the
+ * dataviz validator against the card surface #171315 (dark): the four split
+ * colors pass every check, the bar red passes 3:1; gold is for headings only.
+ */
+
+.board,
+.poster {
+  --plane: #0c0a0b;
+  --card: #171315;
+  --line: rgba(255, 255, 255, 0.08);
+  --grid: #2c2a2b;
+  --ink: #f0efec;
+  --ink2: #c3c2b7;
+  --muted: #898781;
+  --accent: #e66767;
+  --accent-soft: rgba(230, 103, 103, 0.14);
+  --gold: #d4af37;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* ---------------- Page ---------------- */
+
+.board { font-size: 14px; display: flex; flex-direction: column; gap: 1.5em; }
+
+.toolbar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.9em 1.2em;
+  padding: 1em 1.2em; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.field { display: flex; flex-direction: column; gap: 0.35em; min-width: 0; }
+.field > span { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.input, .select {
+  background: var(--plane); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  padding: 0.55em 0.75em; font: inherit; min-height: 2.6em;
+}
+.input:focus-visible, .select:focus-visible, .btn:focus-visible, .seg button:focus-visible, .check:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.titleInput { width: 17em; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-height: 2.6em; }
+.seg button { background: transparent; color: var(--ink2); border: 0; padding: 0 0.9em; font: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed='true'] { background: var(--accent-soft); color: var(--ink); }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5em; min-height: 2.6em; padding: 0 1em;
+  border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary { background: #8a1c1c; border-color: #8a1c1c; font-weight: 600; }
+.btnPrimary:hover:not(:disabled) { background: #a32424; }
+.spacer { flex: 1 1 auto; }
+.count { font-size: 0.85em; color: var(--ink2); align-self: center; }
+.note { font-size: 0.85em; color: var(--muted); }
+.error { color: #ffb3b3; }
+
+.section { display: flex; flex-direction: column; gap: 0.9em; }
+.sectionHead { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em 1em; border-bottom: 1px solid var(--line); padding-bottom: 0.5em; }
+.sectionTitle {
+  display: inline-flex; align-items: center; gap: 0.5em; margin: 0;
+  font-family: 'Cinzel', serif; font-size: 1.35em; letter-spacing: 0.06em; color: var(--gold);
+}
+.sectionTools { display: inline-flex; gap: 0.5em; margin-left: auto; }
+.linkBtn { background: none; border: 0; padding: 0.3em 0.2em; color: var(--ink2); font: inherit; font-size: 0.85em; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.linkBtn:hover { color: var(--ink); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17em, 1fr)); gap: 0.9em; grid-auto-flow: dense; }
+@media (min-width: 900px) {
+  .grid .wide { grid-column: span 2; }
+  .grid .full { grid-column: 1 / -1; }
+}
+
+/* A card on the page is a toggle: ticked cards go into the export. */
+.pick { position: relative; cursor: pointer; border-radius: 14px; }
+.pick > .card { height: 100%; transition: border-color 0.15s, opacity 0.15s; }
+.pick[aria-pressed='false'] > .card { opacity: 0.45; }
+.pick[aria-pressed='true'] > .card { border-color: rgba(230, 103, 103, 0.55); }
+.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check {
+  position: absolute; top: 0.7em; right: 0.7em; width: 1.4em; height: 1.4em; border-radius: 5px;
+  border: 1px solid var(--muted); display: flex; align-items: center; justify-content: center; color: var(--ink); background: var(--plane);
+}
+.pick[aria-pressed='true'] .check { background: #8a1c1c; border-color: #8a1c1c; }
+@media (prefers-reduced-motion: reduce) { .pick > .card { transition: none; } }
+
+/* ---------------- Cards (page and poster) ---------------- */
+
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 1.2em 1.3em; display: flex; flex-direction: column; gap: 0.8em; min-width: 0; box-sizing: border-box;
+}
+.cardTitle { margin: 0; font-size: 0.78em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding-right: 2em; }
+.heroValue { font-size: 3.2em; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.sub { font-size: 0.9em; color: var(--ink2); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5em, 1fr)); gap: 1em 1.2em; }
+.tileLabel { font-size: 0.78em; color: var(--muted); }
+.tileValue { font-size: 1.55em; font-weight: 700; line-height: 1.15; margin-top: 0.15em; overflow-wrap: break-word; }
+.tileSub { font-size: 0.78em; color: var(--ink2); margin-top: 0.15em; }
+
+.award { flex-direction: row; align-items: center; gap: 1em; }
+.awardIcon {
+  flex: 0 0 auto; width: 3em; height: 3em; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.awardBody { display: flex; flex-direction: column; gap: 0.25em; min-width: 0; }
+.awardTitle { font-family: 'Cinzel', serif; font-size: 0.95em; letter-spacing: 0.06em; color: var(--gold); }
+.who { display: flex; align-items: center; gap: 0.45em; font-size: 1.15em; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; min-width: 0; }
+.who > span { min-width: 0; }
+.clanMark { width: 1.3em; height: 1.3em; flex: 0 0 auto; }
+.clanMarkSm { width: 1.1em; height: 1.1em; flex: 0 0 auto; }
+
+/* Ranked horizontal bars: one hue, 4px rounded data end, square at the baseline. */
+.bars { display: flex; flex-direction: column; gap: 0.55em; }
+.barRow { display: grid; grid-template-columns: minmax(6em, 10em) 1fr; align-items: center; gap: 0.8em; }
+.barLabel { display: flex; align-items: center; gap: 0.4em; font-size: 0.88em; color: var(--ink2); min-width: 0; }
+.barLabel > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barTrack { display: flex; align-items: center; gap: 0.5em; min-width: 0; }
+.bar { height: 0.85em; max-height: 24px; min-width: 2px; background: var(--accent); border-radius: 0 4px 4px 0; }
+.barValue { font-size: 0.85em; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Columns: value on the cap, label under the baseline. */
+.cols { display: flex; align-items: flex-end; gap: 0.5em; height: 9em; border-bottom: 1px solid var(--grid); padding-top: 1.4em; }
+.col { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.colValue { font-size: 0.75em; color: var(--ink2); margin-bottom: 0.3em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.colBar { width: 70%; max-width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+.colLabels { display: flex; gap: 0.5em; margin-top: 0.4em; }
+.colLabels > span { flex: 1 1 0; text-align: center; font-size: 0.78em; color: var(--muted); min-width: 0; }
+
+/* Tall segmented bar: share printed inside a block when it fits, 2px surface gap. */
+.splitBar { display: flex; gap: 2px; height: 1.75em; max-height: 28px; }
+.seg1, .seg2, .seg3, .seg4 { border-radius: 4px; display: flex; align-items: center; padding-left: 0.5em; min-width: 2px; overflow: visible; }
+.seg1 { background: var(--s1); } .seg2 { background: var(--s2); } .seg3 { background: var(--s3); } .seg4 { background: var(--s4); }
+.segText { font-size: 0.78em; font-weight: 600; color: #fff; white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.5em 1.2em; }
+.legendItem { display: inline-flex; align-items: center; gap: 0.45em; font-size: 0.85em; color: var(--ink2); }
+.swatch { width: 0.75em; height: 0.75em; border-radius: 3px; flex: 0 0 auto; }
+
+/* Timeline: one series, 2px line over a 10% wash. */
+.timeline { display: flex; flex-direction: column; gap: 0.3em; }
+.plot { position: relative; height: 9em; margin-top: 1.4em; border-bottom: 1px solid var(--grid); }
+.plot svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; }
+.peakDot { position: absolute; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--card); transform: translate(-50%, -50%); }
+.peak { position: absolute; transform: translate(-50%, -170%); font-size: 0.75em; color: var(--ink2); white-space: nowrap; }
+.axis { display: flex; justify-content: space-between; font-size: 0.75em; color: var(--muted); }
+
+/* Heatmap: one hue, more is stronger. */
+.heat { display: grid; grid-template-columns: 2.4em repeat(24, 1fr); gap: 2px; align-items: center; }
+.heatRow { font-size: 0.7em; color: var(--muted); }
+.cell { height: 1.5em; border-radius: 2px; min-width: 0; }
+.heatHours { display: grid; grid-template-columns: 2.4em repeat(8, 1fr); font-size: 0.7em; color: var(--muted); }
+
+.list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.listRow { display: grid; grid-template-columns: 1.8em 1fr auto; align-items: center; gap: 0.6em; padding: 0.45em 0; border-top: 1px solid var(--line); }
+.listRow:first-child { border-top: 0; }
+.rank { font-size: 0.8em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.listName { display: flex; align-items: center; gap: 0.45em; min-width: 0; font-size: 0.92em; }
+.listName > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.listValue { font-size: 0.88em; color: var(--ink2); font-variant-numeric: tabular-nums; text-align: right; }
+
+.dice { display: flex; flex-wrap: wrap; gap: 0.35em; }
+.die { width: 2.2em; height: 2.2em; }
+.rollNote { font-size: 0.8em; color: var(--muted); font-style: italic; }
+
+/* ---------------- Exported images ---------------- */
+
+.stage { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0; pointer-events: none; }
+
+.poster {
+  box-sizing: border-box; display: flex; flex-direction: column; gap: 2.2em;
+  padding: 3.4em 3em 2.4em; font-size: 16px;
+  background: radial-gradient(ellipse at 50% 0%, #3a0d14 0%, #160a0d 45%, #0c0a0b 80%);
+  border: 3px solid #6e1414;
+}
+.posterWide { width: 1200px; }
+.posterSquare { width: 1080px; height: 1080px; font-size: 26px; padding: 2.2em 2.2em 1.6em; gap: 1em; justify-content: space-between; }
+.posterHead { display: flex; flex-direction: column; align-items: center; gap: 0.6em; text-align: center; }
+.brand {
+  display: inline-flex; align-items: center; gap: 0.7em; padding: 0.4em 1.1em; border-radius: 999px;
+  border: 1px solid #6e1414; background: rgba(0, 0, 0, 0.45);
+  font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: 0.18em; font-size: 0.85em; color: var(--gold);
+}
+.brand img { height: 1.8em; width: auto; }
+.posterTitle { margin: 0.2em 0 0; font-family: 'Cinzel', serif; font-weight: 700; font-size: 3.2em; line-height: 1.05; letter-spacing: 0.04em; text-shadow: 0 0 24px rgba(138, 3, 3, 0.8); }
+.posterSquare .posterTitle { font-size: 1.6em; }
+.posterPeriod { color: #ffb8b8; font-size: 1.1em; font-weight: 600; letter-spacing: 0.04em; }
+.posterSquare .posterPeriod { font-size: 0.7em; }
+.posterSection { display: flex; flex-direction: column; gap: 1em; }
+.posterSquare .posterSection { flex: 1 1 auto; justify-content: center; }
+.posterSquare .sectionTitle { font-size: 0.9em; justify-content: center; }
+.posterGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1em; grid-auto-flow: dense; }
+.posterGrid .wide { grid-column: span 2; }
+.posterGrid .full { grid-column: 1 / -1; }
+.posterSquare .card { padding: 1em 1.1em; }
+.posterFoot { text-align: center; color: var(--muted); font-size: 0.8em; letter-spacing: 0.06em; border-top: 1px solid var(--line); padding-top: 1em; }
+.posterSquare .posterFoot { font-size: 0.5em; }
