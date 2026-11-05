@@ -1,6 +1,5 @@
 // src/components/DiceRoller.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import api from '../../core/api';
 import { trackEvent } from '../../utils/analytics';
 import D10Die from '../../ui/D10Die';
@@ -37,8 +36,6 @@ function computeOutcome(normal, hunger, difficulty) {
 export default function DiceRoller({ characterId }) {
   // --- 1. All useState Hooks ---
   const [open, setOpen] = useState(false);
-
-  const location = useLocation();
 
   useEffect(() => {
     const handleToggle = () => setOpen(prev => !prev);
@@ -116,10 +113,19 @@ export default function DiceRoller({ characterId }) {
   const normalIdx = useMemo(() => normalDice.map((_, i) => i), [normalDice]);
 
   // --- 3. All useEffect Hooks ---
+  // The character (Hunger, Willpower, powers) only matters while the roller is
+  // open: load it on opening, then every 30 s while it stays open and the tab
+  // is visible (a roll's own answer updates the sheet too). It used to reload
+  // every 5 s on every page, open or not, for every player: the biggest single
+  // source of traffic before the 2026-11-04 outage (830 of 4,218 requests).
   useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
     const loadCharacter = async () => {
+      if (document.hidden) return;
       try {
         const { data } = await api.get(targetUrl);
+        if (cancelled) return;
         const char = data.character || data.npc || data;
         setCharacter(char);
         
@@ -139,13 +145,9 @@ export default function DiceRoller({ characterId }) {
     };
     
     loadCharacter();
-
-    const interval = setInterval(() => {
-      loadCharacter();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [targetUrl, location]);
+    const interval = setInterval(loadCharacter, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [open, targetUrl]);
 
   // --- 5. Regular Functions ---
   // The dice are thrown by the server (POST /dice/roll) and logged in the one

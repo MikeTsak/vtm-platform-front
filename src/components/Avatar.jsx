@@ -177,9 +177,11 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
         onClick={handleClick}
         title={editable ? "Click to change avatar" : ""}
       >
+        {/* No crossOrigin: nothing reads these pixels, and asking for a CORS load
+            made every direct img.miketsak.gr avatar fail (the CDN sends no CORS
+            header), leaving the clan crest everywhere avatarUrl is passed. */}
         <img
           src={srcUrl}
-          crossOrigin={srcUrl && (srcUrl.startsWith('data:') || srcUrl.startsWith('blob:') || (srcUrl.startsWith('http') && !srcUrl.includes('miketsak.gr'))) ? undefined : "anonymous"}
           // `size` isn't always a pixel number: several call sites pass
           // "100%" to fill a variably-sized container (chat rows, admin
           // grids, the court hierarchy cards). We can't know the actual

@@ -8,6 +8,7 @@ import { roleFlags } from '../../core/useRole';
 import api, { formatApiError } from '../../core/api';
 import ForwardPicker from './ForwardPicker';
 import { copyToClipboard } from '../../utils/clipboard';
+import { coalesce } from '../../utils/coalesce';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/ChatSystem.module.css';
 import '../../styles/SchreckNetChat.css';
@@ -1182,27 +1183,34 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   // this must NEVER toggle `loading` (that would flash the skeleton),
   // it silently re-runs fetchContacts() and bumps socketRefreshTick to
   // sync whichever thread is currently open within 300ms.
+  // One tick re-syncs the open thread, its reactions and the contact lists:
+  // 5-6 requests. Messages, reactions and reconnects arrive in bursts (a busy
+  // group, a server hiccup reconnecting every client), and a tick per event
+  // fed the 2026-11-04 overload, so ticks are coalesced: ~300 ms after a quiet
+  // moment, never closer than 2 s apart.
   const [socketRefreshTick, setSocketRefreshTick] = useState(0);
   useEffect(() => {
-    let debounceTimer = null;
-    const bump = () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => setSocketRefreshTick((t) => t + 1), 300);
-    };
+    const bump = coalesce(() => setSocketRefreshTick((t) => t + 1), { delay: 300, gap: 2000 });
     socket.on('chat:refresh', bump);
     socket.on('chat:reactions', bump);
     socket.on('connect', bump);
     return () => {
-      clearTimeout(debounceTimer);
+      bump.cancel();
       socket.off('chat:refresh', bump);
       socket.off('chat:reactions', bump);
       socket.off('connect', bump);
     };
   }, []);
+  // The three contact lists (3 requests) only reorder and badge the OTHER chats:
+  // refreshed at most every 6 s, the open thread keeps the 2 s pace above.
+  const fetchContactsRef = useRef(fetchContacts);
+  fetchContactsRef.current = fetchContacts;
+  const refreshContacts = useMemo(() => coalesce(() => fetchContactsRef.current(), { delay: 0, gap: 6000 }), []);
+  useEffect(() => () => refreshContacts.cancel(), [refreshContacts]);
   useEffect(() => {
     if (socketRefreshTick === 0) return; // skip initial render
-    fetchContacts();
-  }, [socketRefreshTick, fetchContacts]);
+    refreshContacts();
+  }, [socketRefreshTick, refreshContacts]);
 
   // Admin-only: keep the "Pending" (queued NPC messages) count/list fresh.
   // Reuses the same chat:refresh socket signal as contacts, plus a slow
