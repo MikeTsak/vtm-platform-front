@@ -1752,6 +1752,16 @@ export const DISCIPLINES = {
           source: 'Cults of the Blood Gods p.206; Players Guide p.89',
         },
         {
+          id: 'profane_the_sanctified',
+          name: 'Profane the Sanctified',
+          cost: '1 Rouse',
+          duration: 'One turn or permanent',
+          dice_pool: 'Resolve + Oblivion',
+          opposing_pool: 'Willpower',
+          notes: 'Corrode a holy symbol or stun and negate True Faith in a target for one turn. Targets who rely on True Faith suffer necrotic flesh.',
+          source: 'Cults of the Blood Gods p.206; Players Guide p.89',
+        },
+        {
           id: 'stygian_shroud',
           name: 'Stygian Shroud',
           cost: '1 Rouse',
