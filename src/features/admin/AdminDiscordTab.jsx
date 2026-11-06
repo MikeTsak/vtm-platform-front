@@ -25,7 +25,9 @@ export default function AdminDiscordTab({ users = [] }) {
     notify_mail: true,
     notify_news: true,
     notify_prems: true,
-    ai_enabled: true,
+    ai_enabled: false,
+    ai_system_prompt: '',
+    ai_has_key: false,
     discord_emoji_ids: {},
     bot_status: 'Checking...',
     bot_name: ''
@@ -36,6 +38,12 @@ export default function AdminDiscordTab({ users = [] }) {
   const [dmMessage, setDmMessage] = useState('');
   const [copiedKey, setCopiedKey] = useState(null);
   const [syncing, setSyncing] = useState(false);
+
+  // Server Channel Message State
+  const [guilds, setGuilds] = useState([]);
+  const [loadingChannels, setLoadingChannels] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState('');
+  const [channelMessage, setChannelMessage] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
@@ -65,7 +73,20 @@ export default function AdminDiscordTab({ users = [] }) {
 
   useEffect(() => {
     loadConfig();
+    loadChannels();
   }, []);
+
+  const loadChannels = async () => {
+    setLoadingChannels(true);
+    try {
+      const { data } = await api.get('/admin/discord/channels');
+      setGuilds(data.guilds || []);
+    } catch (e) {
+      console.error('[AdminDiscordTab] Failed to load Discord channels', e);
+    } finally {
+      setLoadingChannels(false);
+    }
+  };
 
   const loadConfig = async () => {
     setLoading(true);
@@ -92,6 +113,7 @@ export default function AdminDiscordTab({ users = [] }) {
         notify_news: config.notify_news,
         notify_prems: config.notify_prems,
         ai_enabled: config.ai_enabled,
+        ai_system_prompt: config.ai_system_prompt || '',
         discord_emoji_ids: config.discord_emoji_ids || {}
       });
       setMsg('Settings saved successfully.');
@@ -164,6 +186,23 @@ export default function AdminDiscordTab({ users = [] }) {
       setDmMessage(''); // Clear the box on success
     } catch (e) {
       setErr(formatApiError(e, 'Failed to send DM.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendChannelMessage = async () => {
+    if (!selectedChannelId || !channelMessage.trim()) return alert("Select a channel and type a message first.");
+    setLoading(true); setMsg(''); setErr('');
+    try {
+      const { data } = await api.post('/admin/discord/channel-message', {
+        channel_id: selectedChannelId,
+        message: channelMessage.trim()
+      });
+      setMsg(data.message || 'Message sent to Discord channel successfully.');
+      setChannelMessage('');
+    } catch (e) {
+      setErr(formatApiError(e, 'Failed to send channel message.'));
     } finally {
       setLoading(false);
     }
@@ -264,6 +303,70 @@ export default function AdminDiscordTab({ users = [] }) {
           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
           {loading ? 'Saving...' : 'Save Settings'}
         </button>
+      </div>
+
+      <hr style={{ borderColor: 'var(--surface-lighter)', margin: '30px 0' }} />
+
+      {/* SCHRECKNET AI NODE CONFIGURATION */}
+      <div className={styles.sectionHeader} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h4>SchreckNet AI Node (Giannakis)</h4>
+          <span className={styles.subtle}>Interactive Discord AI assistant with Athens database tools</span>
+        </div>
+        <span className={styles.subtle}>
+          API Key:
+          <b style={{ color: config.ai_has_key ? '#00C851' : '#FF4444', marginLeft: '6px' }}>
+            {config.ai_has_key ? 'Configured' : 'Missing'}
+          </b>
+        </span>
+      </div>
+
+      <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '25px', border: '1px solid var(--glass-border)', borderLeft: config.ai_enabled ? '4px solid #00C851' : '4px solid #FF4444', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ marginBottom: '16px' }}>
+          <label className={styles.toggleLabel} style={{ fontSize: '0.98rem', fontWeight: 'bold' }}>
+            <div className={styles.toggleSwitch}>
+              <input 
+                type="checkbox" 
+                checked={config.ai_enabled} 
+                onChange={e => setConfig({...config, ai_enabled: e.target.checked})}
+              />
+              <span className={styles.toggleSlider}></span>
+            </div>
+            <span>Enable AI Capabilities: {config.ai_enabled ? 'Active (Answering bot mentions)' : 'Disabled (Node offline)'}</span>
+          </label>
+          <p style={{ margin: '8px 0 0 0', fontSize: '0.84rem', color: 'var(--text-muted, #aaa)', lineHeight: 1.4 }}>
+            When enabled, mentioning the bot in Discord queries the SchreckNet Nosferatu persona with Athens domain and news tools.
+          </p>
+        </div>
+
+        <div className={styles.labeledInput} style={{ marginTop: '16px' }}>
+          <span>AI Persona and System Instructions</span>
+          <textarea
+            className={styles.input}
+            rows="6"
+            value={config.ai_system_prompt || ''}
+            onChange={e => setConfig({ ...config, ai_system_prompt: e.target.value })}
+            placeholder="System prompt for Giannakis..."
+            style={{ width: '100%', resize: 'vertical', fontFamily: 'monospace', fontSize: '0.85rem' }}
+          />
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #888)', marginTop: '4px' }}>
+            Prompt tokens: &#123;charName&#125; character name, &#123;charClan&#125; clan name
+          </span>
+        </div>
+
+        <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '0.9rem' }}
+            onClick={handleSave}
+            disabled={loading}
+            data-cuelume-press
+            data-cuelume-hover
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>save</span>
+            {loading ? 'Saving...' : 'Save AI Configuration'}
+          </button>
+        </div>
       </div>
 
       <hr style={{ borderColor: 'var(--surface-lighter)', margin: '30px 0' }} />
@@ -436,6 +539,63 @@ export default function AdminDiscordTab({ users = [] }) {
         </button>
       </div>
 
+      {/* SEND MESSAGE TO SERVER CHANNEL */}
+      <div className={styles.sectionHeader} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <h4>Send Message to a Server Channel</h4>
+        <button
+          type="button"
+          className={styles.btnGhost}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.82rem' }}
+          onClick={loadChannels}
+          disabled={loading || loadingChannels}
+          title="Reload channels from Discord servers"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>sync</span>
+          {loadingChannels ? 'Loading...' : 'Refresh Channels'}
+        </button>
+      </div>
+      <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '25px', border: '1px solid var(--glass-border)' }}>
+        <div style={{ marginBottom: '15px' }}>
+          <select 
+            className={styles.input} 
+            value={selectedChannelId} 
+            onChange={e => setSelectedChannelId(e.target.value)}
+          >
+            <option value="">Select a Server Channel</option>
+            {guilds.map(guild => (
+              <optgroup key={guild.guild_id} label={guild.guild_name}>
+                {guild.channels.map(ch => (
+                  <option key={ch.id} value={ch.id}>
+                    #{ch.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div style={{ marginBottom: '15px' }}>
+          <textarea
+            className={styles.input}
+            rows="3"
+            placeholder="Type your channel message here..."
+            value={channelMessage}
+            onChange={e => setChannelMessage(e.target.value)}
+            style={{ width: '100%', resize: 'vertical' }}
+          />
+        </div>
+        <button 
+          className={`${styles.btn} ${styles.btnPrimary}`} 
+          style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          onClick={handleSendChannelMessage} 
+          disabled={loading || !selectedChannelId || !channelMessage.trim()}
+          data-cuelume-press
+          data-cuelume-hover
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>forum</span>
+          Send Channel Message
+        </button>
+      </div>
+
       <hr style={{ borderColor: 'var(--surface-lighter)', margin: '30px 0' }} />
 
       {/* TESTING & CONTROLS */}
@@ -452,6 +612,9 @@ export default function AdminDiscordTab({ users = [] }) {
         </button>
         <button className={styles.btnGhost} onClick={() => handleTest('premonition')} disabled={loading} data-cuelume-press data-cuelume-hover>
           Test Premonition DM
+        </button>
+        <button className={styles.btnGhost} onClick={() => handleTest('ai')} disabled={loading} data-cuelume-press data-cuelume-hover title="Test SchreckNet AI response">
+          Test AI Node
         </button>
         <button className={`${styles.btn} ${styles.btnDanger}`} style={{ marginLeft: 'auto' }} onClick={handleRestart} disabled={loading} data-cuelume-press data-cuelume-hover>
           Hard Restart Bot
