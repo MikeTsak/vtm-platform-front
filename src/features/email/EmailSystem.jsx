@@ -401,12 +401,20 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   };
 
-  /* --- Admin: edit / delete any message --- */
+  /* --- Edit / delete a message (the server has the same rules: routes/emails.js) --- */
+  // Storytellers edit what an identity wrote and delete anything; a player
+  // edits or deletes their own email for 4 hours, until it has been read.
+  const EDIT_WINDOW_MS = 4 * 60 * 60 * 1000;
+  const playerMayChange = (m) => m.sender_type === 'user' && !m.is_read
+    && Date.now() - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
+  const mayEdit = (m) => (isAdmin ? m.sender_type === 'identity' : playerMayChange(m));
+  const mayDelete = (m) => isAdmin || playerMayChange(m);
+
   const saveEditedMsg = async (m) => {
-    if (msgSaving) return;
+    if (msgSaving || !window.confirm('Save your changes to this message?')) return;
     setMsgSaving(true);
     try {
-      await api.put(`/admin/emails/messages/${m.id}`, { body: editingMsg.body });
+      await api.put(`/emails/messages/${m.id}`, { body: editingMsg.body });
       setEmailMessages(prev => prev.map(x => x.id === m.id ? { ...x, body: editingMsg.body, edited: 1 } : x));
       setEditingMsg(null);
     } catch (e) {
@@ -417,9 +425,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   };
 
   const deleteMessage = async (m) => {
-    if (!window.confirm('Delete this message? The player loses it too. This cannot be undone.')) return;
+    const warning = isAdmin && m.sender_type === 'user'
+      ? "Delete this player's message? It is gone for them too. This cannot be undone."
+      : 'Delete this message? This cannot be undone.';
+    if (!window.confirm(warning)) return;
     try {
-      const { data } = await api.delete(`/admin/emails/messages/${m.id}`);
+      const { data } = await api.delete(`/emails/messages/${m.id}`);
       if (data.thread_deleted) {
         setSelectedThread(null);
         setEmailMessages([]);
@@ -935,14 +946,18 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                           </span>
                         )}
                         {!!m.edited && <span className={styles.msgTime}>(edited)</span>}
-                        {isAdmin && editingMsg?.id !== m.id && (
+                        {editingMsg?.id !== m.id && (mayEdit(m) || mayDelete(m)) && (
                           <span className={styles.msgActions}>
-                            <button type="button" className={styles.msgActionBtn} onClick={() => setEditingMsg({ id: m.id, body: m.body || '' })} title="Edit message" aria-label="Edit message">
-                              <span className="material-symbols-outlined">edit</span>
-                            </button>
-                            <button type="button" className={styles.msgActionBtn} onClick={() => deleteMessage(m)} title="Delete message" aria-label="Delete message">
-                              <span className="material-symbols-outlined">delete</span>
-                            </button>
+                            {mayEdit(m) && (
+                              <button type="button" className={styles.msgActionBtn} onClick={() => setEditingMsg({ id: m.id, body: m.body || '' })} title="Edit message" aria-label="Edit message">
+                                <span className="material-symbols-outlined">edit</span>
+                              </button>
+                            )}
+                            {mayDelete(m) && (
+                              <button type="button" className={styles.msgActionBtn} onClick={() => deleteMessage(m)} title="Delete message" aria-label="Delete message">
+                                <span className="material-symbols-outlined">delete</span>
+                              </button>
+                            )}
                           </span>
                         )}
                       </div>
