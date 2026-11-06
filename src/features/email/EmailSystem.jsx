@@ -1,5 +1,5 @@
 // src/components/EmailSystem.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { roleFlags } from '../../core/useRole';
 import { toast } from 'sonner';
 import api, { formatApiError } from '../../core/api';
@@ -13,6 +13,54 @@ import { useCommsEnabled } from '../comms/useCommsEnabled';
 import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatter';
 import { useCommsDrafts, useDraftSummary } from '../comms/drafts/useCommsDrafts';
 import DraftsDrawer, { DraftBadge, hasHtmlText, htmlToText, flyDraft } from '../comms/drafts/DraftsDrawer';
+import ChatMedia from '../chat/ChatMedia';
+
+// --- One image per email ---
+// Stored like a SchreckNet attachment: uploaded through /chat/upload (resized,
+// put on the image host, access-checked), and the email keeps its id.
+const MAX_IMAGE_MB = 50;
+const uploadedIds = new WeakMap(); // File -> its upload's id: a retried send reuses it, so it keeps its idempotency key
+const uploadImage = async (file) => {
+  if (!file) return null;
+  if (!uploadedIds.has(file)) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const { data } = await api.post('/chat/upload', fd);
+    uploadedIds.set(file, data.id);
+  }
+  return uploadedIds.get(file);
+};
+
+const AttachImage = ({ file, onChange, disabled = false }) => {
+  const inputRef = useRef(null);
+  // Revoked once the thumbnail has loaded; another file makes another URL.
+  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const pick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // so picking the same file again still fires
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { toast.error('Only images can be attached.'); return; }
+    if (f.size > MAX_IMAGE_MB * 1024 * 1024) { toast.error(`Image too large (max ${MAX_IMAGE_MB}MB).`); return; }
+    onChange(f);
+  };
+  return (
+    <div className={styles.attachRow}>
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={pick} />
+      <button type="button" className={styles.iconBtn} onClick={() => inputRef.current?.click()} disabled={disabled} aria-label="Attach an image" title="Attach an image">
+        <span className="material-symbols-outlined" style={{ fontSize: 20, verticalAlign: 'middle' }}>image</span>
+      </button>
+      {file && (
+        <div className={styles.attachChip}>
+          <img src={preview} alt="" onLoad={() => URL.revokeObjectURL(preview)} />
+          <span className={styles.attachName} title={file.name}>{file.name}</span>
+          <button type="button" className={styles.iconBtn} onClick={() => onChange(null)} disabled={disabled} aria-label="Remove the image" title="Remove the image">
+            <span className="material-symbols-outlined" style={{ fontSize: 18, verticalAlign: 'middle' }}>close</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // --- Secure Rich Text Editor Component ---
 const EditorToolbar = ({ onCmd }) => (
@@ -74,10 +122,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const [selectedThread, setSelectedThread] = useState(null);
   const [emailMessages, setEmailMessages] = useState([]);
   const [emailReplyBody, setEmailReplyBody] = useState('');
+  const [replyImage, setReplyImage] = useState(null);
 
   // Compose State
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', body: '' });
+  const [composeImage, setComposeImage] = useState(null);
 
   // Admin Management State
   const [adminIdentitiesOpen, setAdminIdentitiesOpen] = useState(false);
@@ -88,6 +138,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const [adminDmOpen, setAdminDmOpen] = useState(false);
   const [adminDmForm, setAdminDmForm] = useState({ email: '', display: '', user_id: '', subject: '', body: '' });
   const [adminDmSending, setAdminDmSending] = useState(false);
+  const [dmImage, setDmImage] = useState(null);
   const [allPlayers, setAllPlayers] = useState([]);
 
   // Admin-only: queued ("Send Later") NPC-identity emails pending until SurfaceWeb reopens
@@ -95,6 +146,8 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const [pendingQueue, setPendingQueue] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [replySending, setReplySending] = useState(false);
+  const [editingMsg, setEditingMsg] = useState(null); // admin: { id, body } being edited in place
+  const [msgSaving, setMsgSaving] = useState(false);
 
   // Admin drawer open state (Set of user_id strings)
   const [openDrawers, setOpenDrawers] = useState(new Set());
@@ -189,7 +242,10 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
 
       const open = selectedThreadRef.current;
       const fresh = open && data.threads.find(t => t.id === open.id);
-      if (fresh && fresh.updated_at !== openThreadStampRef.current) {
+      if (open && !fresh) { // a Storyteller deleted its last message
+        setSelectedThread(null);
+        setEmailMessages([]);
+      } else if (fresh && fresh.updated_at !== openThreadStampRef.current) {
         openThreadStampRef.current = fresh.updated_at;
         const { data: thread } = await api.get(isAdmin ? `/admin/emails/threads/${open.id}` : `/emails/thread/${open.id}`, { signal });
         if (selectedThreadRef.current?.id === open.id) {
@@ -265,7 +321,10 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     // emails:refresh (new mail or a read) is the real-time path; the poll is
     // only a safety net and skips background tabs.
     let debounce = null;
-    const onRefresh = () => {
+    const onRefresh = (payload) => {
+      // An edited or deleted message leaves the thread's stamp as it was:
+      // forget the stamp so the open thread reloads anyway.
+      if (payload?.thread_id && payload.thread_id === selectedThreadRef.current?.id) openThreadStampRef.current = null;
       clearTimeout(debounce);
       debounce = setTimeout(() => loadEmails(true), 300);
     };
@@ -317,26 +376,64 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     setTimeout(() => scrollToBottom(), 80);
   };
 
+  const replyHasContent = !!emailReplyBody.trim() || !!replyImage;
+
   const handleEmailReply = async ({ queue = false } = {}) => {
-    if (!canComposeReply || !emailReplyBody.trim() || replySending) return;
+    if (!canComposeReply || !replyHasContent || replySending) return;
     setReplySending(true);
     try {
+      const attachment_id = await uploadImage(replyImage);
       const endpoint = isAdmin ? '/admin/emails/reply' : '/emails/send';
-      await api.post(endpoint, { thread_id: selectedThread.id, body: emailReplyBody, queue });
+      await api.post(endpoint, { thread_id: selectedThread.id, body: emailReplyBody, queue, attachment_id });
       if (editingReplyDraft) {
         replyDrafts.remove(editingReplyDraft.id);
         setEditingReplyDraft(null);
       }
       setEmailReplyBody('');
+      setReplyImage(null);
       setReplyOpen(false);
       await reloadOpenThread();
       if (queue) fetchPendingQueue();
     } catch (e) {
-      toast.error('Failed to reply to email.');
+      toast.error(formatApiError(e, 'Failed to reply to email.'));
     } finally {
       setReplySending(false);
     }
   };
+
+  /* --- Admin: edit / delete any message --- */
+  const saveEditedMsg = async (m) => {
+    if (msgSaving) return;
+    setMsgSaving(true);
+    try {
+      await api.put(`/admin/emails/messages/${m.id}`, { body: editingMsg.body });
+      setEmailMessages(prev => prev.map(x => x.id === m.id ? { ...x, body: editingMsg.body, edited: 1 } : x));
+      setEditingMsg(null);
+    } catch (e) {
+      toast.error(formatApiError(e, 'Failed to edit the message.'));
+    } finally {
+      setMsgSaving(false);
+    }
+  };
+
+  const deleteMessage = async (m) => {
+    if (!window.confirm('Delete this message? The player loses it too. This cannot be undone.')) return;
+    try {
+      const { data } = await api.delete(`/admin/emails/messages/${m.id}`);
+      if (data.thread_deleted) {
+        setSelectedThread(null);
+        setEmailMessages([]);
+      } else {
+        setEmailMessages(prev => prev.filter(x => x.id !== m.id));
+      }
+      if (editingMsg?.id === m.id) setEditingMsg(null);
+      if (m.status === 'queued') fetchPendingQueue();
+      loadEmails(true);
+    } catch (e) {
+      toast.error(formatApiError(e, 'Failed to delete the message.'));
+    }
+  };
+  useEffect(() => { setEditingMsg(null); }, [selectedThread?.id]);
 
   /* --- Reply drafts --- */
   const saveReplyDraft = async () => {
@@ -354,6 +451,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
         setEmailReplyBody('');
       }
       setReplyOpen(false);
+      if (replyImage) toast('Drafts keep text only: the image stays in the composer.');
       flyDraft(from, text, 'email-reply');
       navigator.vibrate?.(10);
     } catch (e) {
@@ -411,13 +509,15 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const resetCompose = () => {
     setEmailComposeOpen(false);
     setEmailForm({ to: '', subject: '', body: '' });
+    setComposeImage(null);
     setEditingNewDraft(null);
   };
 
   // Resolves true once sent. 404 = no such address.
-  const sendNewEmail = async ({ to, subject, body }) => {
+  const sendNewEmail = async ({ to, subject, body, image = null }) => {
     try {
-      await api.post('/emails/send', { to_email: to, subject, body });
+      const attachment_id = await uploadImage(image);
+      await api.post('/emails/send', { to_email: to, subject, body, attachment_id });
       loadEmails();
       toast.success('Email sent.');
       return true;
@@ -425,7 +525,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       if (e.response?.status === 404) {
         toast.error('Delivery Status Notification: The specified email address does not exist.');
       } else {
-        toast.error('Failed to send email.');
+        toast.error(formatApiError(e, 'Failed to send email.'));
       }
       return false;
     }
@@ -440,7 +540,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       else await newEmailDrafts.save(fields);
       resetCompose();
       setNewDraftsOpen(true);
-      toast.success('Kept as a draft.');
+      toast.success(composeImage ? 'Kept as a draft, without the image: drafts keep text only.' : 'Kept as a draft.');
     } catch (e) {
       toast.error(formatApiError(e, 'Could not save the draft.'));
     } finally {
@@ -465,7 +565,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const handleEmailSend = async (e) => {
     e.preventDefault();
     if (!commsEnabled) return;
-    if (!await sendNewEmail(emailForm)) return;
+    if (!await sendNewEmail({ ...emailForm, image: composeImage })) return;
     if (editingNewDraft) newEmailDrafts.remove(editingNewDraft);
     resetCompose();
   };
@@ -485,21 +585,29 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   };
 
+  const dmReady = !!(adminDmForm.email && adminDmForm.display && adminDmForm.user_id && adminDmForm.subject && (adminDmForm.body || dmImage));
+  const closeAdminDm = () => {
+    setAdminDmOpen(false);
+    setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' });
+    setDmImage(null);
+  };
+
   const handleAdminDm = async ({ queue = false } = {}) => {
     const { email, display, user_id, subject, body } = adminDmForm;
-    if (!email || !display || !user_id || !subject || !body) return;
+    if (!dmReady) return;
     setAdminDmSending(true);
     try {
+      const attachment_id = await uploadImage(dmImage);
       const { data } = await api.post('/admin/emails/dm', {
         email_address: email,
         display_name: display,
         user_id: Number(user_id),
         subject,
         body,
-        queue
+        queue,
+        attachment_id
       });
-      setAdminDmOpen(false);
-      setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' });
+      closeAdminDm();
       await loadEmails();
       if (queue) {
         fetchPendingQueue();
@@ -826,12 +934,36 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                             <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>schedule_send</span> Pending
                           </span>
                         )}
+                        {!!m.edited && <span className={styles.msgTime}>(edited)</span>}
+                        {isAdmin && editingMsg?.id !== m.id && (
+                          <span className={styles.msgActions}>
+                            <button type="button" className={styles.msgActionBtn} onClick={() => setEditingMsg({ id: m.id, body: m.body || '' })} title="Edit message" aria-label="Edit message">
+                              <span className="material-symbols-outlined">edit</span>
+                            </button>
+                            <button type="button" className={styles.msgActionBtn} onClick={() => deleteMessage(m)} title="Delete message" aria-label="Delete message">
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                          </span>
+                        )}
                       </div>
-                      {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
-                      <div
-                        className={styles.emailMsgContent}
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.body) }}
-                      />
+                      {editingMsg?.id === m.id ? (
+                        <div>
+                          <TextEditor value={editingMsg.body} onChange={(body) => setEditingMsg(prev => ({ ...prev, body }))} />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                            <button type="button" className={styles.btnSec} onClick={() => setEditingMsg(null)} disabled={msgSaving}>Cancel</button>
+                            <button type="button" className={styles.btnPri} onClick={() => saveEditedMsg(m)} disabled={msgSaving || (!hasHtmlText(editingMsg.body) && !m.attachment_id)}>Save</button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */
+                        <div
+                          className={styles.emailMsgContent}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.body) }}
+                        />
+                      )}
+                      {m.attachment_id ? (
+                        <div className={styles.emailMsgAttachment}><ChatMedia attachmentId={m.attachment_id} /></div>
+                      ) : null}
                     </div>
                   </motion.div>
                 );
@@ -849,7 +981,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               </div>
             )}
 
-            {isMobile && !replyOpen && !emailReplyBody ? (
+            {isMobile && !replyOpen && !emailReplyBody && !replyImage ? (
               <div className={styles.emailReplyBox}>
                 <button className={styles.btnPri} style={{ width: '100%', minHeight: 44 }} disabled={!canWriteReply} onClick={() => setReplyOpen(true)}>
                   <span className="material-symbols-outlined" style={{ fontSize: 20, verticalAlign: 'middle', marginRight: 6 }}>{draftMode ? 'edit_note' : 'reply'}</span>{draftMode ? 'Write a draft' : 'Reply'}
@@ -872,7 +1004,8 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 placeholder={draftMode ? (nextOpening ? `Offline : write a draft, send it after ${nextOpening.day} ${nextOpening.time}` : 'Offline : write a draft, send it later') : !canComposeReply ? (nextOpening ? `Offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : "Reply..."}
                 disabled={!canWriteReply}
               />
-              <div style={{ textAlign: 'right', marginTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <div style={{ textAlign: 'right', marginTop: '10px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+                {canComposeReply && <AttachImage file={replyImage} onChange={setReplyImage} disabled={replySending} />}
                 {draftMode ? (
                   <button onClick={saveReplyDraft} className={styles.btnPri} disabled={!hasHtmlText(emailReplyBody)} title="Keep as a draft: you send it yourself once Surface Web opens">
                     <span className="material-symbols-outlined" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>{editingReplyDraft ? 'save' : 'edit_note'}</span>
@@ -880,10 +1013,10 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                   </button>
                 ) : !commsEnabled && isAdmin ? (
                   <>
-                    <button onClick={() => handleEmailReply({ queue: true })} className={styles.btnSec} disabled={replySending || !emailReplyBody.trim()} title="Queue — sends automatically when SurfaceWeb reopens">
+                    <button onClick={() => handleEmailReply({ queue: true })} className={styles.btnSec} disabled={replySending || !replyHasContent} title="Queue — sends automatically when SurfaceWeb reopens">
                       Queue
                     </button>
-                    <button onClick={() => handleEmailReply({ queue: false })} className={styles.btnPri} disabled={replySending || !emailReplyBody.trim()} title="Send now anyway (bypasses the offline gate)">
+                    <button onClick={() => handleEmailReply({ queue: false })} className={styles.btnPri} disabled={replySending || !replyHasContent} title="Send now anyway (bypasses the offline gate)">
                       Send Now
                     </button>
                   </>
@@ -938,7 +1071,8 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 placeholder="Type your message here..."
               />
             </div>
-            <div className={styles.modalActions}>
+            <div className={styles.modalActions} style={{ alignItems: 'center' }}>
+              {commsEnabled && <AttachImage file={composeImage} onChange={setComposeImage} />}
               <button onClick={resetCompose} className={styles.btnSec}>{editingNewDraft ? 'Cancel' : 'Discard'}</button>
               {(!commsEnabled || editingNewDraft) && (
                 <button
@@ -1101,9 +1235,10 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               </p>
             )}
 
-            <div className={styles.modalActions}>
+            <div className={styles.modalActions} style={{ alignItems: 'center' }}>
+              <AttachImage file={dmImage} onChange={setDmImage} disabled={adminDmSending} />
               <button
-                onClick={() => { setAdminDmOpen(false); setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' }); }}
+                onClick={closeAdminDm}
                 className={styles.btnSec}
                 disabled={adminDmSending}
               >
@@ -1114,7 +1249,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                   <button
                     className={styles.btnSec}
                     onClick={() => handleAdminDm({ queue: true })}
-                    disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+                    disabled={adminDmSending || !dmReady}
                     title="Queue — sends automatically when SurfaceWeb reopens"
                   >
                     {adminDmSending ? 'Sending...' : 'Queue'}
@@ -1122,7 +1257,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                   <button
                     className={styles.btnPri}
                     onClick={() => handleAdminDm({ queue: false })}
-                    disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+                    disabled={adminDmSending || !dmReady}
                     title="Send now anyway (bypasses the offline gate)"
                   >
                     {adminDmSending ? 'Sending...' : 'Send Now'}
@@ -1132,7 +1267,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 <button
                   className={styles.btnPri}
                   onClick={() => handleAdminDm()}
-                  disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+                  disabled={adminDmSending || !dmReady}
                 >
                   {adminDmSending ? 'Sending...' : 'Send DM'}
                 </button>

@@ -473,6 +473,11 @@
 
 .msgAuthor { font-weight: 600; color: var(--text-color); font-size: 0.85rem; }
 .msgTime { font-size: 0.72rem; color: var(--text-muted); }
+/* Admin: edit / delete a message. Always visible (no hover on touch), dimmed. */
+.msgActions { margin-left: auto; display: inline-flex; gap: 2px; align-self: center; }
+.msgActionBtn { background: none; border: 0; padding: 2px; line-height: 0; cursor: pointer; color: var(--text-muted); opacity: 0.6; }
+.msgActionBtn:hover, .msgActionBtn:focus-visible { opacity: 1; color: var(--accent); }
+.msgActionBtn span { font-size: 16px; }
 
 .emailMsgContent {
   font-size: 0.93rem;
@@ -482,6 +487,16 @@
 }
 .emailMsgContent blockquote { border-left: 3px solid var(--border-color); margin: 10px 0; padding-left: 10px; color: var(--text-muted); }
 .emailMsgContent a { color: var(--accent); text-decoration: none; }
+.emailMsgAttachment { margin-top: 8px; }
+
+/* Attaching an image (AttachImage) */
+.attachRow { display: flex; align-items: center; gap: 8px; min-width: 0; margin-right: auto; }
+.attachChip {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 4px 4px 4px 4px; border: 1px solid var(--border-color); border-radius: 4px;
+}
+.attachChip img { width: 36px; height: 36px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+.attachName { font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
 
 /* Reply Area */
 .emailReplyBox {
