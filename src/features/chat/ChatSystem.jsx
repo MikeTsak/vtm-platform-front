@@ -422,7 +422,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [npcs, setNpcs] = useState([]);
   const [groups, setGroups] = useState([]);
   const [filter, setFilter] = useState('');
-  const [noCharOpen, setNoCharOpen] = useState(false);
+  const [adminTilemachosOpen, setAdminTilemachosOpen] = useState(false);
 
   const [myChar, setMyChar] = useState(null);
   useEffect(() => {
@@ -897,7 +897,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   // notifOn = the "SchreckNet messages" category: it lights the footer toggle and
   // gates the in-tab Notification below. The toggle opens the shared preferences panel.
   useEffect(() => {
-    getPushSettings().then(settings => setNotifOn(!!settings.chat)).catch(() => {});
+    getPushSettings().then(settings => setNotifOn(!!settings.chat)).catch(() => { });
   }, []);
 
   const pageVisibleRef = useRef(!document.hidden);
@@ -2023,24 +2023,33 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return uid === 2 || cid === 34 || cn.includes('tilemachos') || cn.includes('τηλέμαχος') || dn.includes('tilemachos');
   };
 
+  const isAdminContact = (u) => Boolean(u?.role === 'admin' || u?.is_admin || u?.permission_level === 'admin');
+  const isAdminOrTilemachos = (u) => isTilemachosUser(u) || isAdminContact(u);
+
   const isUserActiveContact = (u) => {
     if (!u.char_id || Number(u.char_id) === 1) return false;
-    if (isTilemachosUser(u)) return false;
+    if (isAdminOrTilemachos(u)) return false;
     if (u.is_active === false) return false;
     if (u.is_deceased || u.is_left || u.is_missing) return false;
     if (typeof u.is_active === 'boolean') return u.is_active;
     return true;
   };
 
+  const isPastContact = (u) => {
+    if (isAdminOrTilemachos(u)) return false;
+    if (isUserActiveContact(u)) return false;
+    return Boolean(u.is_archived || u.is_deceased || u.is_left || u.is_missing || u.last_message_at);
+  };
+
   const usersWithChar = useMemo(() => filteredUsers.filter(u => isUserActiveContact(u)), [filteredUsers]);
-  const usersNoChar = useMemo(() => filteredUsers.filter(u => !isUserActiveContact(u) && !u.char_id && u.is_active !== false && u.role === 'admin'), [filteredUsers]);
-  // Retired characters you talked with: their old threads, read-only.
-  const usersPast = useMemo(() => filteredUsers.filter(u => u.is_archived), [filteredUsers]);
+  const usersAdminAndTilemachos = useMemo(() => filteredUsers.filter(u => isAdminOrTilemachos(u)), [filteredUsers]);
+  // Retired or past characters you talked with: their old threads, read-only.
+  const usersPast = useMemo(() => filteredUsers.filter(isPastContact), [filteredUsers]);
   // Chats a message can be forwarded to (ForwardPicker): players still in play,
   // groups, and a player's NPC threads (a Storyteller speaks in those per
   // player, so they aren't offered to one). Never the chat it's in.
   const forwardTargets = useMemo(() => [
-    ...users.filter((u) => !u.is_archived).map((u) => ({ key: `user-${u.id}`, type: 'user', id: u.id, label: u.char_name || u.display_name })),
+    ...users.filter((u) => isUserActiveContact(u)).map((u) => ({ key: `user-${u.id}`, type: 'user', id: u.id, label: u.char_name || u.display_name })),
     ...groups.map((g) => ({ key: `group-${g.id}`, type: 'group', id: g.id, label: g.name })),
     ...(isAdmin ? [] : npcs.map((n) => ({ key: `npc-${n.id}`, type: 'npc', id: n.id, label: n.name }))),
   ].filter((t) => !(t.type === selectedContact?.type && t.id === selectedContact?.id)), [users, groups, npcs, isAdmin, selectedContact]);
@@ -2456,7 +2465,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       <div key={m.id} className="flex items-center justify-between gap-2 bg-surface-container-highest pl-3 pr-2 py-2 rounded border border-outline-variant/30">
                         <span className="text-sm min-w-0 truncate">
                           {m.char_name || m.display_name}
-                          {m.is_archived && <span className="text-on-surface-variant/60"> · {m.is_deceased ? 'Final Death' : 'gone dark'}</span>}
+                          {(m.is_archived || m.is_deceased) && <span className="text-on-surface-variant/60"> · {m.is_deceased ? 'Final Death' : 'gone dark'}</span>}
                         </span>
                         {m.id !== selectedContact.created_by ? (
                           <button className="text-[11px] bg-error-container/20 text-error border border-error/30 px-3 py-1.5 rounded hover:bg-error/20 transition-colors shrink-0" onClick={() => handleRemoveMemberFromGroup(m.id, label)}>Remove</button>
@@ -2771,16 +2780,16 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   const hasAvatar = m.has_avatar ?? u?.has_avatar;
                   const avatarUrl = m.avatar_url_thumb || m.avatar_url || u?.avatar_url_thumb || u?.avatar_url;
                   return (
-                    <div key={m.id} className={`flex items-center gap-3 px-4 min-h-[56px] ${m.is_archived ? 'opacity-60' : ''}`}>
+                    <div key={m.id} className={`flex items-center gap-3 px-4 min-h-[56px] ${(m.is_archived || m.is_deceased) ? 'opacity-60' : ''}`}>
                       <div className="relative shrink-0">
-                        <div className={`w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest ${m.is_archived ? 'grayscale' : ''}`}>
+                        <div className={`w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest ${(m.is_archived || m.is_deceased) ? 'grayscale' : ''}`}>
                           <Avatar userId={m.id} hasAvatar={hasAvatar} avatarUrl={avatarUrl} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(m.clan) || '/img/ATT-logo(1).webp'} />
                         </div>
                         <OnlineDot online={isUserOnline(m.id)} />
                       </div>
                       <div className="min-w-0 flex-1 flex flex-col">
                         <span className="text-[15px] text-on-surface truncate">{m.char_name || m.display_name}</span>
-                        {m.is_archived
+                        {(m.is_archived || m.is_deceased)
                           ? <span className="text-[11px] text-on-surface-variant/70">{m.is_deceased ? 'Met Final Death' : 'Gone from SchreckNet'}</span>
                           : <StatusLine titles={m.titles} status={m.court_status} className="text-[11px] text-on-surface-variant/70" />}
                       </div>
@@ -3028,18 +3037,19 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             </ul>
           </div>
 
-          {/* No Char Toggle */}
-          {usersNoChar.length > 0 && (
+            {/* Admins & Tilemachos Toggle */ }
+          {usersAdminAndTilemachos.length > 0 && (
             <div className="mb-6">
-              <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
-                  NO CHARACTER ({usersNoChar.length})
-                </div>
-              </div>
-              {noCharOpen && (
-                <ul className="flex flex-col">
-                  {usersNoChar.map(u => {
+                <button type="button" onClick={() => setAdminTilemachosOpen(!adminTilemachosOpen)} aria-expanded={adminTilemachosOpen} className="w-full px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between hover:text-on-surface transition-colors">
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: adminTilemachosOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                    ADMINS & ΤΗΛΕΜΑΧΟΣ ({usersAdminAndTilemachos.length})
+                  </div>
+              </button>
+              {adminTilemachosOpen && (
+            <ul className="flex flex-col">
+                {
+                  usersAdminAndTilemachos.map(u => {
                     const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
                     const crest = localSymlogo(u.clan);
                     return (
@@ -3065,563 +3075,496 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         </div>
                       </li>
                     );
-                  })}
+                  })
+                }
                 </ul>
-              )}
-            </div>
+          )}
+        </div>
           )}
 
-          {/* Past contacts: retired characters, history only */}
-          {usersPast.length > 0 && (
-            <div className="mb-6">
-              <button type="button" onClick={() => setPastOpen(!pastOpen)} aria-expanded={pastOpen} className="w-full px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center gap-1 hover:text-on-surface transition-colors">
-                <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: pastOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
-                PAST CONTACTS ({usersPast.length})
-              </button>
-              {pastOpen && (
-                <ul className="flex flex-col">
-                  {usersPast.map(u => {
-                    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                    return (
-                      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-70`}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 shrink-0 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 grayscale">
-                            <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
-                          </div>
-                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name || u.display_name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {u.is_deceased && <span className="material-symbols-outlined text-[16px]" title="Final Death" aria-label="Final Death">skull</span>}
-                          <UnreadCount count={u.unread_count} />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {/* NPCs */}
+        {/* Past contacts: retired characters, history only */}
+        {usersPast.length > 0 && (
           <div className="mb-6">
-            <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
-              ASSETS (NPCs)
-            </div>
-            <ul className="flex flex-col">
-              {filteredNpcs.map(n => {
-                const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
-                const crest = localSymlogo(n.clan);
-                return (
-                  <li key={`n-${n.id}`} onClick={() => openChat(n)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative shrink-0">
-                        <div className="w-8 h-8 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                          <Avatar npcId={n.id} hasAvatar={n.has_avatar} avatarUrl={n.avatar_url_thumb || n.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+            <button type="button" onClick={() => setPastOpen(!pastOpen)} aria-expanded={pastOpen} className="w-full px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center gap-1 hover:text-on-surface transition-colors">
+              <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: pastOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+              PAST CONTACTS ({usersPast.length})
+            </button>
+            {pastOpen && (
+              <ul className="flex flex-col">
+                {usersPast.map(u => {
+                  const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                  return (
+                    <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-70`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 shrink-0 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 grayscale">
+                          <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
                         </div>
-                        {!isAdmin && <OnlineDot online={storytellerOnline} />}
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name || u.display_name}</span>
                       </div>
-                      <span className="min-w-0 flex flex-col">
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{n.name}</span>
-                        <StatusLine titles={n.titles} status={n.court_status} className="text-[10px] text-on-surface-variant/70" />
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {!isAdmin && <DraftBadge count={draftSummary.countFor('npc', n.id)} />}
-                      <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
-                      <UnreadCount count={n.unread_count} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {u.is_deceased && <span className="material-symbols-outlined text-[16px]" title="Final Death" aria-label="Final Death">skull</span>}
+                        <UnreadCount count={u.unread_count} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
+        )}
 
+        {/* NPCs */}
+        <div className="mb-6">
+          <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+            ASSETS (NPCs)
+          </div>
+          <ul className="flex flex-col">
+            {filteredNpcs.map(n => {
+              const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
+              const crest = localSymlogo(n.clan);
+              return (
+                <li key={`n-${n.id}`} onClick={() => openChat(n)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
+                        <Avatar npcId={n.id} hasAvatar={n.has_avatar} avatarUrl={n.avatar_url_thumb || n.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+                      </div>
+                      {!isAdmin && <OnlineDot online={storytellerOnline} />}
+                    </div>
+                    <span className="min-w-0 flex flex-col">
+                      <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{n.name}</span>
+                      <StatusLine titles={n.titles} status={n.court_status} className="text-[10px] text-on-surface-variant/70" />
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!isAdmin && <DraftBadge count={draftSummary.countFor('npc', n.id)} />}
+                    <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
+                    <UnreadCount count={n.unread_count} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-outline-variant/50 flex flex-col gap-2 shrink-0">
-          <div className={`flex items-center gap-3 p-1 ${connected ? 'text-on-surface-variant' : 'text-amber-400'}`}>
-            <span className="material-symbols-outlined text-[16px]">{connected ? 'wifi_tethering' : 'wifi_tethering_off'}</span>
-            <span className="text-[11px] font-bold tracking-widest uppercase">{connected ? 'Signal: Strong' : 'Signal: Lost'}</span>
+    </div>
+
+        {/* Footer */ }
+  <div className="p-4 border-t border-outline-variant/50 flex flex-col gap-2 shrink-0">
+    <div className={`flex items-center gap-3 p-1 ${connected ? 'text-on-surface-variant' : 'text-amber-400'}`}>
+      <span className="material-symbols-outlined text-[16px]">{connected ? 'wifi_tethering' : 'wifi_tethering_off'}</span>
+      <span className="text-[11px] font-bold tracking-widest uppercase">{connected ? 'Signal: Strong' : 'Signal: Lost'}</span>
+    </div>
+    <button type="button" onClick={() => setNotifPanelOpen(true)} title="Notification settings" className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors text-left bg-transparent border-0`}>
+      <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
+      <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
+    </button>
+    <NotificationSettings open={notifPanelOpen} onClose={() => setNotifPanelOpen(false)} onChange={(st) => setNotifOn(!!st.chat)} />
+    {isAdmin && (
+      <div onClick={() => setPendingOpen(true)} className={`flex items-center gap-3 ${pendingQueue.length > 0 ? 'text-amber-400' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
+        <span className="material-symbols-outlined text-[16px]">schedule_send</span>
+        <span className="text-[11px] font-bold tracking-widest uppercase">Pending: {pendingQueue.length}</span>
+      </div>
+    )}
+  </div>
+      </motion.aside >
+
+    {/* Pending (Queued NPC Messages) Panel */ }
+  {
+    pendingOpen && createPortal(
+      <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPendingOpen(false)}>
+        <div className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.2)]" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 border-b border-outline-variant/50 shrink-0">
+            <h3 className="text-lg font-headline-md text-amber-400 tracking-tight flex items-center gap-2">
+              <span className="material-symbols-outlined">schedule_send</span> Pending NPC Messages
+            </h3>
+            <button onClick={() => setPendingOpen(false)} className="text-on-surface-variant hover:text-error"><span className="material-symbols-outlined">close</span></button>
           </div>
-          <button type="button" onClick={() => setNotifPanelOpen(true)} title="Notification settings" className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors text-left bg-transparent border-0`}>
-            <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
-            <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
-          </button>
-          <NotificationSettings open={notifPanelOpen} onClose={() => setNotifPanelOpen(false)} onChange={(st) => setNotifOn(!!st.chat)} />
-          {isAdmin && (
-            <div onClick={() => setPendingOpen(true)} className={`flex items-center gap-3 ${pendingQueue.length > 0 ? 'text-amber-400' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
-              <span className="material-symbols-outlined text-[16px]">schedule_send</span>
-              <span className="text-[11px] font-bold tracking-widest uppercase">Pending: {pendingQueue.length}</span>
+          {nextOpening && (
+            <div className="px-4 py-2 text-[11px] font-system-code text-on-surface-variant/70 border-b border-outline-variant/30">
+              Auto-sends when SchreckNet reopens: {nextOpening.formatted}
             </div>
           )}
-        </div>
-      </motion.aside>
-
-      {/* Pending (Queued NPC Messages) Panel */}
-      {pendingOpen && createPortal(
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPendingOpen(false)}>
-          <div className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.2)]" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-outline-variant/50 shrink-0">
-              <h3 className="text-lg font-headline-md text-amber-400 tracking-tight flex items-center gap-2">
-                <span className="material-symbols-outlined">schedule_send</span> Pending NPC Messages
-              </h3>
-              <button onClick={() => setPendingOpen(false)} className="text-on-surface-variant hover:text-error"><span className="material-symbols-outlined">close</span></button>
-            </div>
-            {nextOpening && (
-              <div className="px-4 py-2 text-[11px] font-system-code text-on-surface-variant/70 border-b border-outline-variant/30">
-                Auto-sends when SchreckNet reopens: {nextOpening.formatted}
-              </div>
-            )}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 custom-scrollbar">
-              {pendingLoading && pendingQueue.length === 0 && <div className="text-on-surface-variant text-sm text-center py-6">Loading...</div>}
-              {!pendingLoading && pendingQueue.length === 0 && <div className="text-on-surface-variant text-sm text-center py-6">Nothing queued.</div>}
-              {pendingQueue.map(m => (
-                <div key={m.id} className="bg-surface-container-highest border border-outline-variant/30 rounded p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-primary truncate">{m.npc_name} <span className="text-on-surface-variant font-normal"><span className="material-symbols-outlined text-[16px] align-middle">arrow_forward</span> {m.char_name || m.user_display_name}</span></span>
-                    <button onClick={() => cancelPendingMessage(m.id)} className="text-[10px] bg-error-container/20 text-error border border-error/30 px-2 py-1 rounded hover:bg-error/20 transition-colors shrink-0">Cancel</button>
-                  </div>
-                  <p className="text-sm text-on-surface break-words">{m.body || (m.attachment_id ? <span className="inline-flex items-center gap-1 italic opacity-80"><span className="material-symbols-outlined text-[16px]">image</span> Attachment</span> : '')}</p>
-                  <span className="text-[10px] text-on-surface-variant/50 font-system-code">{formatTime(m.created_at)}</span>
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 custom-scrollbar">
+            {pendingLoading && pendingQueue.length === 0 && <div className="text-on-surface-variant text-sm text-center py-6">Loading...</div>}
+            {!pendingLoading && pendingQueue.length === 0 && <div className="text-on-surface-variant text-sm text-center py-6">Nothing queued.</div>}
+            {pendingQueue.map(m => (
+              <div key={m.id} className="bg-surface-container-highest border border-outline-variant/30 rounded p-3 flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-primary truncate">{m.npc_name} <span className="text-on-surface-variant font-normal"><span className="material-symbols-outlined text-[16px] align-middle">arrow_forward</span> {m.char_name || m.user_display_name}</span></span>
+                  <button onClick={() => cancelPendingMessage(m.id)} className="text-[10px] bg-error-container/20 text-error border border-error/30 px-2 py-1 rounded hover:bg-error/20 transition-colors shrink-0">Cancel</button>
                 </div>
+                <p className="text-sm text-on-surface break-words">{m.body || (m.attachment_id ? <span className="inline-flex items-center gap-1 italic opacity-80"><span className="material-symbols-outlined text-[16px]">image</span> Attachment</span> : '')}</p>
+                <span className="text-[10px] text-on-surface-variant/50 font-system-code">{formatTime(m.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
+  }
+
+  {/* Main Content (Canvas) */ }
+  <motion.main
+    className={styles.chatWindow}
+    style={selectedContact && activeTheme ? { background: activeTheme.bg } : undefined}
+    initial={{ opacity: 0, scale: 0.98 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
+  >
+    {selectedContact ? (
+      <>
+        {/* Chat Header */}
+        <header className={styles.chatHeader} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '64px' }}>
+          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+            {/* Mobile Back */}
+            <button className="-ml-2 w-11 h-11 flex items-center justify-center md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={closeChat} aria-label="Back to contacts">
+              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+            </button>
+            <button type="button" onClick={openDetails} aria-label="Conversation details" className="flex items-center gap-3 md:gap-4 min-w-0 text-left">
+              <div className="relative shrink-0">
+                <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
+                  {selectedContact.type === 'user' ? (
+                    <Avatar userId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
+                  ) : selectedContact.type === 'npc' ? (
+                    <Avatar npcId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
+                  ) : (
+                    <GroupIconGlyph icon={selectedContact.icon} size={28} />
+                  )}
+                </div>
+                <OnlineDot online={headerOnline} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-headline-md text-[16px] md:text-[18px] font-semibold text-on-surface m-0 leading-tight truncate">{headerLabel}</h2>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] md:text-[12px] font-system-code mt-0.5 min-w-0 text-on-surface-variant/70">
+                  <StatusLine titles={headerStanding.titles} status={headerStanding.court_status} />
+                  {(headerStanding.titles.length > 0 || headerStanding.court_status > 0) && headerStatus && <span aria-hidden="true">{'\u00b7'}</span>}
+                  <span className={`truncate ${headerOnline ? 'text-green-500' : ''}`}>{headerStatus}</span>
+                </div>
+              </div>
+            </button>
+          </div>
+          <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
+            {isAdmin && selectedContact.type === 'npc' && selectedPlayerId && (
+              <button
+                type="button"
+                onClick={() => handleMarkNpcUnread()}
+                title="Mark conversation unread for other Storytellers"
+                className="hover:text-primary transition-colors flex items-center justify-center gap-1 border border-outline-variant/50 h-10 min-w-10 px-2 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">mark_chat_unread</span>
+                <span className="hidden sm:inline">Mark Unread</span>
+              </button>
+            )}
+            {/* Group manage/leave, search, media and theme live in the details panel. */}
+            <button type="button" onClick={openDetails} aria-label="Conversation details" title="Details" className="w-10 h-10 flex items-center justify-center rounded hover:text-primary hover:bg-surface-variant/40 transition-colors">
+              <span className="material-symbols-outlined text-[22px]">info</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Admin Roster Banner for NPCs */}
+        {isAdmin && selectedContact.type === 'npc' && (
+          <div className="bg-surface-container border-b border-surface-container-highest p-2 z-10 shrink-0">
+            <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mb-2">
+              <div className="flex bg-surface-dim rounded border border-outline-variant/50 overflow-hidden text-xs font-system-code">
+                <button className={`px-3 py-1 ${adminPlayerTab === 'recent' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
+                <button className={`px-3 py-1 ${adminPlayerTab === 'all' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('all')}>All</button>
+              </div>
+              {adminPlayerTab === 'all' && (
+                <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-base md:text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search Kindred…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
+              )}
+              <div className="text-xs font-system-code flex items-center gap-2">
+                {selectedPlayerId ? (
+                  <>
+                    <span className="text-on-surface-variant">To:</span>
+                    <b className="text-primary">{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b>
+                    <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors cursor-pointer" onClick={() => setSelectedPlayerId(null)}>Clear</button>
+                  </>
+                ) : (
+                  <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select a Kindred</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
+                <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
+                  {isUserOnline(u.id) && <span title="Online" className="w-2 h-2 rounded-full bg-green-500 shrink-0" />}
+                  <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
+                  <UnreadCount count={u.unread_count} />
+                </button>
               ))}
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+        )}
 
-      {/* Main Content (Canvas) */}
-      <motion.main
-        className={styles.chatWindow}
-        style={selectedContact && activeTheme ? { background: activeTheme.bg } : undefined}
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
-      >
-        {selectedContact ? (
-          <>
-            {/* Chat Header */}
-            <header className={styles.chatHeader} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '64px' }}>
-              <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                {/* Mobile Back */}
-                <button className="-ml-2 w-11 h-11 flex items-center justify-center md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={closeChat} aria-label="Back to contacts">
-                  <span className="material-symbols-outlined text-[24px]">arrow_back</span>
-                </button>
-                <button type="button" onClick={openDetails} aria-label="Conversation details" className="flex items-center gap-3 md:gap-4 min-w-0 text-left">
-                <div className="relative shrink-0">
-                  <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
-                    {selectedContact.type === 'user' ? (
-                      <Avatar userId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
-                    ) : selectedContact.type === 'npc' ? (
-                      <Avatar npcId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
-                    ) : (
-                      <GroupIconGlyph icon={selectedContact.icon} size={28} />
-                    )}
-                  </div>
-                  <OnlineDot online={headerOnline} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-headline-md text-[16px] md:text-[18px] font-semibold text-on-surface m-0 leading-tight truncate">{headerLabel}</h2>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[11px] md:text-[12px] font-system-code mt-0.5 min-w-0 text-on-surface-variant/70">
-                    <StatusLine titles={headerStanding.titles} status={headerStanding.court_status} />
-                    {(headerStanding.titles.length > 0 || headerStanding.court_status > 0) && headerStatus && <span aria-hidden="true">{'\u00b7'}</span>}
-                    <span className={`truncate ${headerOnline ? 'text-green-500' : ''}`}>{headerStatus}</span>
-                  </div>
-                </div>
-                </button>
+        {/* System Warning (Offline / No Char) */}
+        {!commsEnabled ? (
+          <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
+            <span className="material-symbols-outlined text-error text-sm">warning</span>
+            <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">
+              {nextOpening
+                ? `SCHRECKNET OFFLINE : OPENS AGAIN ${nextOpening.day.toUpperCase()} AT ${nextOpening.time} (${nextOpening.date})`
+                : 'SCHRECKNET PROTOCOL OFFLINE'}
+            </span>
+          </div>
+        ) : !isCharActive ? (
+          <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
+            <span className="material-symbols-outlined text-error text-sm">hourglass_empty</span>
+            <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">Awaiting ST Approval</span>
+          </div>
+        ) : null}
+
+        {/* Drafts written while SchreckNet was closed */}
+        {draftTarget && (
+          <DraftsDrawer
+            drafts={commsDrafts.drafts}
+            open={draftsOpen}
+            onOpenChange={setDraftsOpen}
+            commsEnabled={canSend}
+            nextOpening={nextOpening}
+            network="SchreckNet"
+            barId="chat"
+            editingId={editingDraft?.id}
+            onSend={sendDraft}
+            onSent={sentDraft}
+            onDelete={deleteDraft}
+            onEdit={editDraft}
+          />
+        )}
+
+        {/* Chat History Area */}
+        <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef} onScroll={handleListScroll}>
+          <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2 min-h-[20px]">
+            {loadingOlder ? 'Decrypting older transmissions...'
+              : hasMore ? (
+                <button type="button" onClick={loadOlder} className="text-primary/80 hover:text-primary px-3 py-2">Load older messages</button>
+              ) : messages.length ? '[ START OF ENCRYPTED CHANNEL ]' : '[ CHANNEL OPEN : NO TRANSMISSIONS YET ]'}
+          </div>
+
+          {grouped.map(item => {
+            if (item.type === 'day') return (
+              <div key={item.id} className="flex items-center justify-center w-full my-4 opacity-50">
+                <div className="h-px bg-outline-variant/50 flex-1"></div>
+                <span className="font-system-code text-[10px] text-on-surface-variant px-4 bg-transparent">{item.day.toUpperCase()}</span>
+                <div className="h-px bg-outline-variant/50 flex-1"></div>
               </div>
-              <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
-                {isAdmin && selectedContact.type === 'npc' && selectedPlayerId && (
-                  <button
-                    type="button"
-                    onClick={() => handleMarkNpcUnread()}
-                    title="Mark conversation unread for other Storytellers"
-                    className="hover:text-primary transition-colors flex items-center justify-center gap-1 border border-outline-variant/50 h-10 min-w-10 px-2 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">mark_chat_unread</span>
-                    <span className="hidden sm:inline">Mark Unread</span>
-                  </button>
+            );
+
+            if (item.type === 'system') return (
+              <div key={item.id} className="w-full text-center text-[11px] md:text-[12px] font-system-code text-on-surface-variant/60 my-2 px-4">
+                {renderMessageBody(item.body)}
+              </div>
+            );
+
+            const { mine, canEditDelete, canEdit, canReply, canForward } = messagePerms(item);
+            const isGroupNotMine = selectedContact.type === 'group' && !mine;
+            // Hold-to-grow emoji: shown bare and big, without the bubble.
+            const bigEmoji = !!item.emoji_size && !!item.body && !item.attachment_id;
+
+            return (
+              <SwipeRow
+                key={item.id}
+                id={`chat-msg-${item.id}`}
+                enabled={isMobile && canReply}
+                onReply={() => startReply(item)}
+                onSwipeStart={handleBubblePointerCancel}
+                className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              >
+                {/* Avatar */}
+                {!mine ? (
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
+                    {(() => {
+                      if (selectedContact.type === 'group') {
+                        const sender = currentGroupMembers.find(m => m.id === item.sender_id) || users.find(u => u.id === item.sender_id);
+                        return <Avatar userId={item.sender_id} hasAvatar={sender?.has_avatar} avatarUrl={sender?.avatar_url_thumb || sender?.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).webp'} />;
+                      } else if (item.sender_id === 'npc') {
+                        return <Avatar npcId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
+                      } else {
+                        const sender = (selectedContact.type === 'user' && selectedContact.id === item.sender_id) ? selectedContact : users.find(u => u.id === item.sender_id);
+                        return <Avatar userId={item.sender_id} hasAvatar={sender?.has_avatar} avatarUrl={sender?.avatar_url_thumb || sender?.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
+                      }
+                    })()}
+                  </div>
+                ) : (
+                  <div className="hidden md:flex w-8 h-8 rounded-full opacity-0 shrink-0"></div>
                 )}
-                {/* Group manage/leave, search, media and theme live in the details panel. */}
-                <button type="button" onClick={openDetails} aria-label="Conversation details" title="Details" className="w-10 h-10 flex items-center justify-center rounded hover:text-primary hover:bg-surface-variant/40 transition-colors">
-                  <span className="material-symbols-outlined text-[22px]">info</span>
-                </button>
-              </div>
-            </header>
 
-            {/* Admin Roster Banner for NPCs */}
-            {isAdmin && selectedContact.type === 'npc' && (
-              <div className="bg-surface-container border-b border-surface-container-highest p-2 z-10 shrink-0">
-                <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mb-2">
-                  <div className="flex bg-surface-dim rounded border border-outline-variant/50 overflow-hidden text-xs font-system-code">
-                    <button className={`px-3 py-1 ${adminPlayerTab === 'recent' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
-                    <button className={`px-3 py-1 ${adminPlayerTab === 'all' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('all')}>All</button>
-                  </div>
-                  {adminPlayerTab === 'all' && (
-                    <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-base md:text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search Kindred…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
+                {/* Bubble Container */}
+                <div className={`flex flex-col gap-1 min-w-0 ${mine ? 'items-end' : 'items-start'}`}>
+
+                  {/* Sender Name for Groups */}
+                  {isGroupNotMine && (
+                    <div className="text-[11px] md:text-[12px] font-bold font-system-code ml-1" style={{ color: '#fff' }}>
+                      {item.sender_name}
+                    </div>
                   )}
-                  <div className="text-xs font-system-code flex items-center gap-2">
-                    {selectedPlayerId ? (
-                      <>
-                        <span className="text-on-surface-variant">To:</span>
-                        <b className="text-primary">{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b>
-                        <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors cursor-pointer" onClick={() => setSelectedPlayerId(null)}>Clear</button>
-                      </>
-                    ) : (
-                      <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select a Kindred</span>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                  {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
-                    <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
-                      {isUserOnline(u.id) && <span title="Online" className="w-2 h-2 rounded-full bg-green-500 shrink-0" />}
-                      <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
-                      <UnreadCount count={u.unread_count} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* System Warning (Offline / No Char) */}
-            {!commsEnabled ? (
-              <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
-                <span className="material-symbols-outlined text-error text-sm">warning</span>
-                <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">
-                  {nextOpening
-                    ? `SCHRECKNET OFFLINE : OPENS AGAIN ${nextOpening.day.toUpperCase()} AT ${nextOpening.time} (${nextOpening.date})`
-                    : 'SCHRECKNET PROTOCOL OFFLINE'}
-                </span>
-              </div>
-            ) : !isCharActive ? (
-              <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
-                <span className="material-symbols-outlined text-error text-sm">hourglass_empty</span>
-                <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">Awaiting ST Approval</span>
-              </div>
-            ) : null}
-
-            {/* Drafts written while SchreckNet was closed */}
-            {draftTarget && (
-              <DraftsDrawer
-                drafts={commsDrafts.drafts}
-                open={draftsOpen}
-                onOpenChange={setDraftsOpen}
-                commsEnabled={canSend}
-                nextOpening={nextOpening}
-                network="SchreckNet"
-                barId="chat"
-                editingId={editingDraft?.id}
-                onSend={sendDraft}
-                onSent={sentDraft}
-                onDelete={deleteDraft}
-                onEdit={editDraft}
-              />
-            )}
-
-            {/* Chat History Area */}
-            <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef} onScroll={handleListScroll}>
-              <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2 min-h-[20px]">
-                {loadingOlder ? 'Decrypting older transmissions...'
-                  : hasMore ? (
-                    <button type="button" onClick={loadOlder} className="text-primary/80 hover:text-primary px-3 py-2">Load older messages</button>
-                  ) : messages.length ? '[ START OF ENCRYPTED CHANNEL ]' : '[ CHANNEL OPEN : NO TRANSMISSIONS YET ]'}
-              </div>
-
-              {grouped.map(item => {
-                if (item.type === 'day') return (
-                  <div key={item.id} className="flex items-center justify-center w-full my-4 opacity-50">
-                    <div className="h-px bg-outline-variant/50 flex-1"></div>
-                    <span className="font-system-code text-[10px] text-on-surface-variant px-4 bg-transparent">{item.day.toUpperCase()}</span>
-                    <div className="h-px bg-outline-variant/50 flex-1"></div>
-                  </div>
-                );
-
-                if (item.type === 'system') return (
-                  <div key={item.id} className="w-full text-center text-[11px] md:text-[12px] font-system-code text-on-surface-variant/60 my-2 px-4">
-                    {renderMessageBody(item.body)}
-                  </div>
-                );
-
-                const { mine, canEditDelete, canEdit, canReply, canForward } = messagePerms(item);
-                const isGroupNotMine = selectedContact.type === 'group' && !mine;
-                // Hold-to-grow emoji: shown bare and big, without the bubble.
-                const bigEmoji = !!item.emoji_size && !!item.body && !item.attachment_id;
-
-                return (
-                  <SwipeRow
-                    key={item.id}
-                    id={`chat-msg-${item.id}`}
-                    enabled={isMobile && canReply}
-                    onReply={() => startReply(item)}
-                    onSwipeStart={handleBubblePointerCancel}
-                    className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                  >
-                    {/* Avatar */}
-                    {!mine ? (
-                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
-                        {(() => {
-                          if (selectedContact.type === 'group') {
-                            const sender = currentGroupMembers.find(m => m.id === item.sender_id) || users.find(u => u.id === item.sender_id);
-                            return <Avatar userId={item.sender_id} hasAvatar={sender?.has_avatar} avatarUrl={sender?.avatar_url_thumb || sender?.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).webp'} />;
-                          } else if (item.sender_id === 'npc') {
-                            return <Avatar npcId={selectedContact.id} hasAvatar={selectedContact.has_avatar} avatarUrl={selectedContact.avatar_url_thumb || selectedContact.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
-                          } else {
-                            const sender = (selectedContact.type === 'user' && selectedContact.id === item.sender_id) ? selectedContact : users.find(u => u.id === item.sender_id);
-                            return <Avatar userId={item.sender_id} hasAvatar={sender?.has_avatar} avatarUrl={sender?.avatar_url_thumb || sender?.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
-                          }
-                        })()}
-                      </div>
-                    ) : (
-                      <div className="hidden md:flex w-8 h-8 rounded-full opacity-0 shrink-0"></div>
-                    )}
-
-                    {/* Bubble Container */}
-                    <div className={`flex flex-col gap-1 min-w-0 ${mine ? 'items-end' : 'items-start'}`}>
-
-                      {/* Sender Name for Groups */}
-                      {isGroupNotMine && (
-                        <div className="text-[11px] md:text-[12px] font-bold font-system-code ml-1" style={{ color: '#fff' }}>
-                          {item.sender_name}
-                        </div>
-                      )}
-
-                      {editingMsgId === item.id ? (
-                        <div className="bg-surface-container-high p-3 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(255,179,174,0.1)] w-full max-w-sm">
-                          <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-base md:text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
-                          <div className="flex justify-end gap-2 mt-2">
-                            <button onClick={() => setEditingMsgId(null)} className="text-xs text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
-                            <button onClick={submitEditMessage} className="text-xs bg-primary text-on-primary px-3 py-1 rounded font-bold hover:bg-primary-container">Save</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => handleBubbleTap(item.id)}
-                          onPointerDown={(e) => handleBubblePointerDown(e, item)}
-                          onPointerUp={handleBubblePointerCancel}
-                          onPointerLeave={handleBubblePointerCancel}
-                          onPointerCancel={handleBubblePointerCancel}
-                          onContextMenu={(e) => e.preventDefault()}
-                          style={mine && bubbleTheme && !bigEmoji ? bubbleTheme : undefined}
-                          className={bigEmoji
-                            ? `relative w-fit max-w-full select-none leading-none rounded ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''}`
-                            : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border-r border-t border-b border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
-                        >
-
-                          {/* Forwarded copy: its original author, named by the server */}
-                          {item.forwarded_from && (
-                            <span className={`flex items-center gap-1 mb-1 text-[11px] italic ${mine ? 'text-white/75' : 'text-on-surface-variant'}`}>
-                              <span className="material-symbols-outlined text-[14px] not-italic" aria-hidden="true">forward</span>
-                              Forwarded from {item.forwarded_from}
-                            </span>
-                          )}
-
-                          {/* Quoted message this one replies to */}
-                          {item.reply && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); if (!item.reply.missing) scrollToMessage(item.reply.id); }}
-                              onPointerDown={(e) => e.stopPropagation()}
-                              title={item.reply.missing ? undefined : 'Jump to the original message'}
-                              className={`block w-full text-left mb-2 px-2 py-1 rounded border-l-2 text-[12px] md:text-[13px] leading-snug ${mine ? 'bg-black/25 border-white/60' : 'bg-surface-container-highest/80 border-primary'} ${item.reply.missing ? 'cursor-default' : 'cursor-pointer hover:brightness-125'}`}
-                            >
-                              <span className={`block text-[10px] font-bold font-system-code truncate ${mine ? 'text-white/80' : 'text-primary'}`}>{replyAuthor(item.reply)}</span>
-                              <span className="line-clamp-2 break-words opacity-90">{replySnippet(item.reply)}</span>
-                            </button>
-                          )}
-
-                          {/* Attachment */}
-                          {item.attachment_id && (
-                            <div className="mb-2 relative rounded overflow-hidden border border-outline-variant/50 bg-black/50 group/img cursor-pointer w-fit max-w-full">
-                              <ChatMedia attachmentId={item.attachment_id} />
-                              <div className="absolute inset-0 bg-blood-accent/10 pointer-events-none mix-blend-overlay"></div>
-                            </div>
-                          )}
-
-                          {/* Body */}
-                          {item.body && (bigEmoji ? (
-                            <span className="block py-1" style={{ fontSize: EMOJI_PX[item.emoji_size] }}>
-                              <ReactionGlyph value={item.body} size={EMOJI_PX[item.emoji_size]} />
-                            </span>
-                          ) : (
-                            <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Reactions */}
-                      {!String(item.id).startsWith('temp_') && (reactionsByMsgId[item.id]?.length > 0 || reactionPickerFor === item.id) && (
-                        <div className={`flex items-center gap-1 flex-wrap ${mine ? 'justify-end' : 'justify-start'}`}>
-                          {(reactionsByMsgId[item.id] || []).map(r => {
-                            const isReactedByMe = (r.users || []).includes(currentUser?.id);
-                            const reactorNames = (r.reactors || []).map(u => u.name).filter(Boolean);
-                            const tooltip = reactorNames.length > 0
-                              ? `${reactorNames.join(', ')}: ${r.emoji}`
-                              : (isReactedByMe ? 'Remove your reaction' : 'React');
-                            return (
-                              <button
-                                key={r.emoji}
-                                type="button"
-                                onPointerDown={() => handlePillPointerDown(item, r.emoji)}
-                                onPointerUp={() => handlePillPointerUp(item, r.emoji)}
-                                onPointerLeave={handlePillPointerCancel}
-                                onPointerCancel={handlePillPointerCancel}
-                                onContextMenu={(e) => {
-                                  e.preventDefault();
-                                  setSelectedReactionTab(r.emoji);
-                                  setViewingReactionsMsg(item);
-                                }}
-                                title={tooltip}
-                                className={`text-[12px] md:text-[11px] leading-none px-2 py-1 md:px-1.5 md:py-0.5 rounded-full border transition-colors flex items-center gap-1 cursor-pointer select-none ${isReactedByMe ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
-                              >
-                                <ReactionGlyph value={r.emoji} size={12} />
-                                <span className="font-system-code">{r.count}</span>
-                              </button>
-                            );
-                          })}
-                          {reactionPickerFor === item.id && (
-                            <div data-reaction-ui="true" className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-1.5 py-0.5 shadow-lg">
-                              {QUICK_REACTIONS.map(e => (
-                                <button
-                                  key={e}
-                                  type="button"
-                                  onClick={() => toggleReaction(item.id, e)}
-                                  className="text-[14px] leading-none hover:scale-125 transition-transform"
-                                >
-                                  <ReactionGlyph value={e} size={15} />
-                                </button>
-                              ))}
-                              <div className="w-px h-3.5 bg-outline-variant/40 mx-0.5" />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFullReactionPickerFor(item.id);
-                                }}
-                                className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center p-0.5 rounded-full hover:bg-white/10"
-                                title="More reactions"
-                                aria-label="More reactions"
-                              >
-                                <span className="material-symbols-outlined text-[15px] leading-none">add_reaction</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Meta Line (Time, Status, Actions) */}
-                      <div className={`flex items-center gap-2 mt-0.5 ${mine ? 'mr-1 flex-row-reverse' : 'ml-1'}`}>
-                        <span className="font-system-code text-[9px] md:text-[10px] text-on-surface-variant/60">{formatTime(item.created_at)}</span>
-
-                        {!!item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
-
-                        {item.status === 'queued' && (
-                          <span className="font-system-code text-[9px] text-amber-400 uppercase tracking-widest flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[11px]">schedule_send</span> Pending
-                          </span>
-                        )}
-
-                        {mine && (
-                          <span className="text-[12px] md:text-[14px] text-primary flex items-center">
-                            <StatusIcon msg={item} />
-                          </span>
-                        )}
-
-                        {/* Action Buttons (Hover) */}
-                        <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {canReply && (
-                            <button type="button" onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
-                          )}
-                          {canForward && (
-                            <button type="button" onClick={() => setForwardingMsg(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Forward</button>
-                          )}
-                          {!String(item.id).startsWith('temp_') && (
-                            <button
-                              type="button"
-                              data-reaction-ui="true"
-                              onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
-                              title="React"
-                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
-                            >
-                              React
-                            </button>
-                          )}
-                          {item.body && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopyMessage(item.body)}
-                              title="Copy text"
-                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
-                            >
-                              Copy
-                            </button>
-                          )}
-                          {!String(item.id).startsWith('temp_') && reactionsByMsgId[item.id]?.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedReactionTab('all');
-                                setViewingReactionsMsg(item);
-                              }}
-                              title="Reactions"
-                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
-                            >
-                              Reactions
-                            </button>
-                          )}
-                          {canEditDelete && !editingMsgId && (
-                            <>
-                              {canEdit && (
-                                <button type="button" onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
-                              )}
-                              <button type="button" onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
-                            </>
-                          )}
-                          {!mine && isAdmin && selectedContact?.type === 'npc' && !String(item.id).startsWith('temp_') && (
-                            <button
-                              type="button"
-                              onClick={() => handleMarkNpcUnread(item.id)}
-                              title="Mark unread from this message"
-                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[11px]">mark_chat_unread</span>
-                              Unread
-                            </button>
-                          )}
-                        </div>
+                  {editingMsgId === item.id ? (
+                    <div className="bg-surface-container-high p-3 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(255,179,174,0.1)] w-full max-w-sm">
+                      <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-base md:text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button onClick={() => setEditingMsgId(null)} className="text-xs text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                        <button onClick={submitEditMessage} className="text-xs bg-primary text-on-primary px-3 py-1 rounded font-bold hover:bg-primary-container">Save</button>
                       </div>
                     </div>
+                  ) : (
+                    <div
+                      onClick={() => handleBubbleTap(item.id)}
+                      onPointerDown={(e) => handleBubblePointerDown(e, item)}
+                      onPointerUp={handleBubblePointerCancel}
+                      onPointerLeave={handleBubblePointerCancel}
+                      onPointerCancel={handleBubblePointerCancel}
+                      onContextMenu={(e) => e.preventDefault()}
+                      style={mine && bubbleTheme && !bigEmoji ? bubbleTheme : undefined}
+                      className={bigEmoji
+                        ? `relative w-fit max-w-full select-none leading-none rounded ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''}`
+                        : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border-r border-t border-b border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
+                    >
 
-                    {/* Quick action buttons beside the bubble (desktop; mobile swipes or holds instead) */}
-                    <div className="hidden md:flex items-center gap-0.5 self-center shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                      {canReply && (
+                      {/* Forwarded copy: its original author, named by the server */}
+                      {item.forwarded_from && (
+                        <span className={`flex items-center gap-1 mb-1 text-[11px] italic ${mine ? 'text-white/75' : 'text-on-surface-variant'}`}>
+                          <span className="material-symbols-outlined text-[14px] not-italic" aria-hidden="true">forward</span>
+                          Forwarded from {item.forwarded_from}
+                        </span>
+                      )}
+
+                      {/* Quoted message this one replies to */}
+                      {item.reply && (
                         <button
                           type="button"
-                          onClick={() => startReply(item)}
-                          title="Reply"
-                          aria-label="Reply to this message"
-                          className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); if (!item.reply.missing) scrollToMessage(item.reply.id); }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          title={item.reply.missing ? undefined : 'Jump to the original message'}
+                          className={`block w-full text-left mb-2 px-2 py-1 rounded border-l-2 text-[12px] md:text-[13px] leading-snug ${mine ? 'bg-black/25 border-white/60' : 'bg-surface-container-highest/80 border-primary'} ${item.reply.missing ? 'cursor-default' : 'cursor-pointer hover:brightness-125'}`}
                         >
-                          <span className="material-symbols-outlined text-[20px]">reply</span>
+                          <span className={`block text-[10px] font-bold font-system-code truncate ${mine ? 'text-white/80' : 'text-primary'}`}>{replyAuthor(item.reply)}</span>
+                          <span className="line-clamp-2 break-words opacity-90">{replySnippet(item.reply)}</span>
                         </button>
                       )}
+
+                      {/* Attachment */}
+                      {item.attachment_id && (
+                        <div className="mb-2 relative rounded overflow-hidden border border-outline-variant/50 bg-black/50 group/img cursor-pointer w-fit max-w-full">
+                          <ChatMedia attachmentId={item.attachment_id} />
+                          <div className="absolute inset-0 bg-blood-accent/10 pointer-events-none mix-blend-overlay"></div>
+                        </div>
+                      )}
+
+                      {/* Body */}
+                      {item.body && (bigEmoji ? (
+                        <span className="block py-1" style={{ fontSize: EMOJI_PX[item.emoji_size] }}>
+                          <ReactionGlyph value={item.body} size={EMOJI_PX[item.emoji_size]} />
+                        </span>
+                      ) : (
+                        <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Reactions */}
+                  {!String(item.id).startsWith('temp_') && (reactionsByMsgId[item.id]?.length > 0 || reactionPickerFor === item.id) && (
+                    <div className={`flex items-center gap-1 flex-wrap ${mine ? 'justify-end' : 'justify-start'}`}>
+                      {(reactionsByMsgId[item.id] || []).map(r => {
+                        const isReactedByMe = (r.users || []).includes(currentUser?.id);
+                        const reactorNames = (r.reactors || []).map(u => u.name).filter(Boolean);
+                        const tooltip = reactorNames.length > 0
+                          ? `${reactorNames.join(', ')}: ${r.emoji}`
+                          : (isReactedByMe ? 'Remove your reaction' : 'React');
+                        return (
+                          <button
+                            key={r.emoji}
+                            type="button"
+                            onPointerDown={() => handlePillPointerDown(item, r.emoji)}
+                            onPointerUp={() => handlePillPointerUp(item, r.emoji)}
+                            onPointerLeave={handlePillPointerCancel}
+                            onPointerCancel={handlePillPointerCancel}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setSelectedReactionTab(r.emoji);
+                              setViewingReactionsMsg(item);
+                            }}
+                            title={tooltip}
+                            className={`text-[12px] md:text-[11px] leading-none px-2 py-1 md:px-1.5 md:py-0.5 rounded-full border transition-colors flex items-center gap-1 cursor-pointer select-none ${isReactedByMe ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
+                          >
+                            <ReactionGlyph value={r.emoji} size={12} />
+                            <span className="font-system-code">{r.count}</span>
+                          </button>
+                        );
+                      })}
+                      {reactionPickerFor === item.id && (
+                        <div data-reaction-ui="true" className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-1.5 py-0.5 shadow-lg">
+                          {QUICK_REACTIONS.map(e => (
+                            <button
+                              key={e}
+                              type="button"
+                              onClick={() => toggleReaction(item.id, e)}
+                              className="text-[14px] leading-none hover:scale-125 transition-transform"
+                            >
+                              <ReactionGlyph value={e} size={15} />
+                            </button>
+                          ))}
+                          <div className="w-px h-3.5 bg-outline-variant/40 mx-0.5" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFullReactionPickerFor(item.id);
+                            }}
+                            className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center p-0.5 rounded-full hover:bg-white/10"
+                            title="More reactions"
+                            aria-label="More reactions"
+                          >
+                            <span className="material-symbols-outlined text-[15px] leading-none">add_reaction</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Meta Line (Time, Status, Actions) */}
+                  <div className={`flex items-center gap-2 mt-0.5 ${mine ? 'mr-1 flex-row-reverse' : 'ml-1'}`}>
+                    <span className="font-system-code text-[9px] md:text-[10px] text-on-surface-variant/60">{formatTime(item.created_at)}</span>
+
+                    {!!item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
+
+                    {item.status === 'queued' && (
+                      <span className="font-system-code text-[9px] text-amber-400 uppercase tracking-widest flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[11px]">schedule_send</span> Pending
+                      </span>
+                    )}
+
+                    {mine && (
+                      <span className="text-[12px] md:text-[14px] text-primary flex items-center">
+                        <StatusIcon msg={item} />
+                      </span>
+                    )}
+
+                    {/* Action Buttons (Hover) */}
+                    <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canReply && (
+                        <button type="button" onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
+                      )}
                       {canForward && (
+                        <button type="button" onClick={() => setForwardingMsg(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Forward</button>
+                      )}
+                      {!String(item.id).startsWith('temp_') && (
                         <button
                           type="button"
-                          onClick={() => setForwardingMsg(item)}
-                          title="Forward"
-                          aria-label="Forward this message"
-                          className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                          data-reaction-ui="true"
+                          onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
+                          title="React"
+                          className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[20px]">forward</span>
+                          React
                         </button>
                       )}
                       {item.body && (
@@ -3629,132 +3572,208 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           type="button"
                           onClick={() => handleCopyMessage(item.body)}
                           title="Copy text"
-                          aria-label="Copy text"
-                          className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                          className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                          Copy
+                        </button>
+                      )}
+                      {!String(item.id).startsWith('temp_') && reactionsByMsgId[item.id]?.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedReactionTab('all');
+                            setViewingReactionsMsg(item);
+                          }}
+                          title="Reactions"
+                          className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
+                        >
+                          Reactions
+                        </button>
+                      )}
+                      {canEditDelete && !editingMsgId && (
+                        <>
+                          {canEdit && (
+                            <button type="button" onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
+                          )}
+                          <button type="button" onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
+                        </>
+                      )}
+                      {!mine && isAdmin && selectedContact?.type === 'npc' && !String(item.id).startsWith('temp_') && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkNpcUnread(item.id)}
+                          title="Mark unread from this message"
+                          className="text-[10px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[11px]">mark_chat_unread</span>
+                          Unread
                         </button>
                       )}
                     </div>
-                  </SwipeRow>
-                );
-              })}
+                  </div>
+                </div>
 
-              {/* Invisible element to scroll to */}
-              <div ref={messagesEndRef} className="h-4"></div>
-            </div>
+                {/* Quick action buttons beside the bubble (desktop; mobile swipes or holds instead) */}
+                <div className="hidden md:flex items-center gap-0.5 self-center shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  {canReply && (
+                    <button
+                      type="button"
+                      onClick={() => startReply(item)}
+                      title="Reply"
+                      aria-label="Reply to this message"
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">reply</span>
+                    </button>
+                  )}
+                  {canForward && (
+                    <button
+                      type="button"
+                      onClick={() => setForwardingMsg(item)}
+                      title="Forward"
+                      aria-label="Forward this message"
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">forward</span>
+                    </button>
+                  )}
+                  {item.body && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyMessage(item.body)}
+                      title="Copy text"
+                      aria-label="Copy text"
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                    </button>
+                  )}
+                </div>
+              </SwipeRow>
+            );
+          })}
 
-            {showScrollBtn && (
-              <button
-                type="button"
-                className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors"
-                onClick={() => {
-                  userScrollingRef.current = false;
-                  scrollToBottom(true);
-                }}
-              >
-                <span className="material-symbols-outlined">arrow_downward</span>
-              </button>
+          {/* Invisible element to scroll to */}
+          <div ref={messagesEndRef} className="h-4"></div>
+        </div>
+
+        {showScrollBtn && (
+          <button
+            type="button"
+            className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors"
+            onClick={() => {
+              userScrollingRef.current = false;
+              scrollToBottom(true);
+            }}
+          >
+            <span className="material-symbols-outlined">arrow_downward</span>
+          </button>
+        )}
+
+          {/* Bottom Input Area. A retired, out of play, or administrative contact thread is history only. */ }
+            {(selectedContact?.type === 'user' && (selectedContact?.is_archived || selectedContact?.is_deceased || selectedContact?.is_left || selectedContact?.is_missing || selectedContact?.is_active === false || isTilemachosUser(selectedContact) || (!isAdmin && isAdminContact(selectedContact)))) ? (
+          <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <p className="max-w-4xl mx-auto w-full flex items-center gap-2 text-xs font-system-code text-on-surface-variant/70">
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">lock</span>
+              {selectedContact.char_name || selectedContact.display_name}
+              {selectedContact.is_deceased
+                ? ' has passed into Final Death and is no longer on SchreckNet. Only their words remain.'
+                : isTilemachosUser(selectedContact)
+                  ? ' is an automated system entity and messaging is disabled. Only previous messages remain.'
+                  : isAdminContact(selectedContact)
+                    ? ' is an administrative channel and direct messaging is disabled. Only previous messages remain.'
+                    : ' has gone dark and is no longer on SchreckNet. Only their words remain.'}
+            </p>
+          </div>
+        ) : (
+          <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={() => setShowEmojiPicker(false)}
+                />
+                <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
+                  <React.Suspense fallback={
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>
+                      Loading emojis...
+                    </div>
+                  }>
+                    <EmojiPicker
+                      onEmojiClick={onEmojiClick}
+                      theme="dark"
+                      searchDisabled={false}
+                      width="100%"
+                      customEmojis={customClanEmojis}
+                      categories={EMOJI_PICKER_CATEGORIES}
+                    />
+                  </React.Suspense>
+                </div>
+              </>
             )}
 
-            {/* Bottom Input Area. A retired character's thread is history only. */}
-            {selectedContact?.is_archived ? (
-              <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
-                <p className="max-w-4xl mx-auto w-full flex items-center gap-2 text-xs font-system-code text-on-surface-variant/70">
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">history</span>
-                  {selectedContact.char_name || selectedContact.display_name}
-                  {selectedContact.is_deceased ? ' has passed into Final Death' : ' has gone dark'} and is no longer on SchreckNet. Only their words remain.
-                </p>
-              </div>
-            ) : (
-            <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
-              {/* Emoji Picker */}
-              {showEmojiPicker && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40 bg-transparent"
-                    onClick={() => setShowEmojiPicker(false)}
-                  />
-                  <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
-                    <React.Suspense fallback={
-                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>
-                        Loading emojis...
-                      </div>
-                    }>
-                      <EmojiPicker
-                        onEmojiClick={onEmojiClick}
-                        theme="dark"
-                        searchDisabled={false}
-                        width="100%"
-                        customEmojis={customClanEmojis}
-                        categories={EMOJI_PICKER_CATEGORIES}
-                      />
-                    </React.Suspense>
-                  </div>
-                </>
-              )}
-
-              <div className="max-w-4xl mx-auto w-full relative flex flex-col bg-surface-container-lowest border border-outline-variant rounded-md focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
-                {replyTo && (
-                  <div className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-primary">
-                    <span className="material-symbols-outlined text-[18px] text-primary shrink-0">reply</span>
-                    <button
-                      type="button"
-                      onClick={() => scrollToMessage(replyTo.id)}
-                      className="flex-1 min-w-0 text-left"
-                      title="Jump to the message you're replying to"
-                    >
-                      <span className="block text-[10px] font-bold font-system-code text-primary truncate">Replying to {replyAuthor(replyTo)}</span>
-                      <span className="block text-[12px] text-on-surface-variant truncate">{replySnippet(replyTo)}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReplyTo(null)}
-                      aria-label="Cancel reply"
-                      title="Cancel reply (Esc)"
-                      className="w-9 h-9 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-error hover:bg-surface-variant/40 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">close</span>
-                    </button>
-                  </div>
-                )}
-                {editingDraft && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 34 }}
-                    className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-amber-400"
+            <div className="max-w-4xl mx-auto w-full relative flex flex-col bg-surface-container-lowest border border-outline-variant rounded-md focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
+              {replyTo && (
+                <div className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-primary">
+                  <span className="material-symbols-outlined text-[18px] text-primary shrink-0">reply</span>
+                  <button
+                    type="button"
+                    onClick={() => scrollToMessage(replyTo.id)}
+                    className="flex-1 min-w-0 text-left"
+                    title="Jump to the message you're replying to"
                   >
-                    <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0">edit_note</span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[10px] font-bold font-system-code text-amber-400 truncate uppercase tracking-wider">Editing draft</span>
-                      <span className="block text-[11px] text-on-surface-variant truncate">
-                        {draftMode ? 'Save keeps it in the drawer' : 'Send delivers it now, or keep it as a draft'}
-                      </span>
+                    <span className="block text-[10px] font-bold font-system-code text-primary truncate">Replying to {replyAuthor(replyTo)}</span>
+                    <span className="block text-[12px] text-on-surface-variant truncate">{replySnippet(replyTo)}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReplyTo(null)}
+                    aria-label="Cancel reply"
+                    title="Cancel reply (Esc)"
+                    className="w-9 h-9 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-error hover:bg-surface-variant/40 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+              )}
+              {editingDraft && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+                  className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-amber-400"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0">edit_note</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[10px] font-bold font-system-code text-amber-400 truncate uppercase tracking-wider">Editing draft</span>
+                    <span className="block text-[11px] text-on-surface-variant truncate">
+                      {draftMode ? 'Save keeps it in the drawer' : 'Send delivers it now, or keep it as a draft'}
                     </span>
-                    {!draftMode && (
-                      <button
-                        type="button"
-                        onClick={saveDraft}
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={!newMessage.trim()}
-                        className="h-9 px-2.5 shrink-0 flex items-center gap-1 rounded text-[11px] font-system-code uppercase tracking-wider text-amber-300 border border-amber-500/40 hover:bg-amber-500/15 transition-colors disabled:opacity-30"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">save</span>Keep
-                      </button>
-                    )}
+                  </span>
+                  {!draftMode && (
                     <button
                       type="button"
-                      onClick={cancelEditDraft}
-                      aria-label="Stop editing the draft"
-                      title="Stop editing (Esc): the draft stays as it was"
-                      className="w-9 h-9 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-error hover:bg-surface-variant/40 transition-colors"
+                      onClick={saveDraft}
+                      onMouseDown={(e) => e.preventDefault()}
+                      disabled={!newMessage.trim()}
+                      className="h-9 px-2.5 shrink-0 flex items-center gap-1 rounded text-[11px] font-system-code uppercase tracking-wider text-amber-300 border border-amber-500/40 hover:bg-amber-500/15 transition-colors disabled:opacity-30"
                     >
-                      <span className="material-symbols-outlined text-[18px]">close</span>
+                      <span className="material-symbols-outlined text-[16px]">save</span>Keep
                     </button>
-                  </motion.div>
-                )}
-                <div className="flex items-end gap-2 p-1.5 md:p-2">
+                  )}
+                  <button
+                    type="button"
+                    onClick={cancelEditDraft}
+                    aria-label="Stop editing the draft"
+                    title="Stop editing (Esc): the draft stays as it was"
+                    className="w-9 h-9 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-error hover:bg-surface-variant/40 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </motion.div>
+              )}
+              <div className="flex items-end gap-2 p-1.5 md:p-2">
 
                 {/* Attachments & Previews */}
                 {/* Backend upload endpoint only accepts image/audio (see handleFileSelect) — video
@@ -3837,301 +3856,299 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         exit={{ opacity: 0, scale: 0.4, rotate: 45 }}
                         transition={{ type: 'spring', stiffness: 520, damping: 30 }}
                       >
-                      {(newMessage.trim() || attachment) ? (
-                        draftMode ? (
-                          <button
-                            type="button"
-                            onClick={saveDraft}
-                            onMouseDown={(e) => e.preventDefault()}
-                            disabled={!newMessage.trim()}
-                            title={editingDraft ? 'Save the draft' : 'Keep as a draft: you send it yourself once SchreckNet opens'}
-                            aria-label={editingDraft ? 'Save the draft' : 'Keep as a draft'}
-                            className="flex items-center justify-center h-10 w-10 rounded border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 transition-colors disabled:opacity-30"
-                          >
-                            <span className="material-symbols-outlined text-[22px]">{editingDraft ? 'save' : 'edit_note'}</span>
-                          </button>
-                        ) : showQueueOption ? (
-                          <button
-                            type="button"
-                            onClick={(e) => { if (e.detail === 0) doSend({ queue: true }); }}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onPointerDown={startSendHold}
-                            onPointerUp={() => endSendHold(true)}
-                            onPointerLeave={() => endSendHold(false)}
-                            onPointerCancel={() => endSendHold(false)}
-                            onContextMenu={(e) => e.preventDefault()}
-                            disabled={!isCharActive || sendingRef.current || !selectedPlayerId}
-                            title="Tap: queue until SchreckNet reopens. Hold: send now"
-                            aria-label={sendHold === 'armed' ? 'Release to send now' : 'Queue until SchreckNet reopens, hold to send now'}
-                            style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
-                            className={`relative flex items-center justify-center h-10 w-10 rounded border select-none transition-colors disabled:opacity-30 ${sendHold === 'armed' ? 'bg-primary text-on-primary border-primary' : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'}`}
-                          >
-                            {sendHold === 'holding' && (
-                              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 40 40" aria-hidden="true">
-                                <motion.circle
-                                  cx="20" cy="20" r="17" fill="none" stroke="currentColor" strokeWidth="2.5"
-                                  initial={{ pathLength: 0 }}
-                                  animate={{ pathLength: 1 }}
-                                  transition={{ duration: SEND_NOW_HOLD_MS / 1000, ease: 'linear' }}
-                                />
-                              </svg>
-                            )}
-                            <span className="material-symbols-outlined text-[22px]">{sendHold === 'armed' ? 'send' : 'schedule_send'}</span>
-                          </button>
+                        {(newMessage.trim() || attachment) ? (
+                          draftMode ? (
+                            <button
+                              type="button"
+                              onClick={saveDraft}
+                              onMouseDown={(e) => e.preventDefault()}
+                              disabled={!newMessage.trim()}
+                              title={editingDraft ? 'Save the draft' : 'Keep as a draft: you send it yourself once SchreckNet opens'}
+                              aria-label={editingDraft ? 'Save the draft' : 'Keep as a draft'}
+                              className="flex items-center justify-center h-10 w-10 rounded border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 transition-colors disabled:opacity-30"
+                            >
+                              <span className="material-symbols-outlined text-[22px]">{editingDraft ? 'save' : 'edit_note'}</span>
+                            </button>
+                          ) : showQueueOption ? (
+                            <button
+                              type="button"
+                              onClick={(e) => { if (e.detail === 0) doSend({ queue: true }); }}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onPointerDown={startSendHold}
+                              onPointerUp={() => endSendHold(true)}
+                              onPointerLeave={() => endSendHold(false)}
+                              onPointerCancel={() => endSendHold(false)}
+                              onContextMenu={(e) => e.preventDefault()}
+                              disabled={!isCharActive || sendingRef.current || !selectedPlayerId}
+                              title="Tap: queue until SchreckNet reopens. Hold: send now"
+                              aria-label={sendHold === 'armed' ? 'Release to send now' : 'Queue until SchreckNet reopens, hold to send now'}
+                              style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
+                              className={`relative flex items-center justify-center h-10 w-10 rounded border select-none transition-colors disabled:opacity-30 ${sendHold === 'armed' ? 'bg-primary text-on-primary border-primary' : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'}`}
+                            >
+                              {sendHold === 'holding' && (
+                                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 40 40" aria-hidden="true">
+                                  <motion.circle
+                                    cx="20" cy="20" r="17" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: 1 }}
+                                    transition={{ duration: SEND_NOW_HOLD_MS / 1000, ease: 'linear' }}
+                                  />
+                                </svg>
+                              )}
+                              <span className="material-symbols-outlined text-[22px]">{sendHold === 'armed' ? 'send' : 'schedule_send'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleSendMessage}
+                              onMouseDown={(e) => e.preventDefault()}
+                              disabled={!canSend || !isCharActive || sendingRef.current || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
+                              title="Send"
+                              aria-label="Send"
+                              className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                            >
+                              <span className="material-symbols-outlined text-[22px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
+                            </button>
+                          )
                         ) : (
+                          /* Conversation emoji (Messenger's like button): tap sends it,
+                             hold to inflate it, hold too long and it pops. onClick only
+                             covers keyboard activation (detail 0). */
                           <button
                             type="button"
-                            onClick={handleSendMessage}
+                            onClick={(e) => { if (e.detail === 0) doSend({ text: convEmoji, emojiSize: 1, queue: showQueueOption }); }}
                             onMouseDown={(e) => e.preventDefault()}
+                            onPointerDown={startEmojiHold}
+                            onPointerUp={() => endEmojiHold(true)}
+                            onPointerLeave={() => endEmojiHold(false)}
+                            onPointerCancel={() => endEmojiHold(false)}
+                            onContextMenu={(e) => e.preventDefault()}
                             disabled={!canSend || !isCharActive || sendingRef.current || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
-                            title="Send"
-                            aria-label="Send"
-                            className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                            aria-label="Send the conversation emoji, hold to make it bigger"
+                            title="Tap to send, hold to make it bigger"
+                            style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
+                            className="relative flex items-center justify-center h-10 w-10 rounded text-[22px] leading-none select-none hover:bg-surface-variant/30 transition-colors disabled:opacity-30"
                           >
-                            <span className="material-symbols-outlined text-[22px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
+                            <motion.span
+                              className="relative z-10 inline-block leading-none"
+                              style={{ originX: 1, originY: 1 }}
+                              animate={
+                                emojiHold === 'growing' ? { scale: 3.2, rotate: 0, opacity: 1 }
+                                  : emojiHold === 'warning' ? { scale: 3.2, rotate: [0, -10, 10, -10, 10, 0], opacity: 1 }
+                                    : emojiHold === 'popped' ? { scale: 0, rotate: 0, opacity: 0 }
+                                      : { scale: 1, rotate: 0, opacity: 1 }
+                              }
+                              transition={
+                                emojiHold === 'growing' ? { duration: EMOJI_GROW_MS / 1000, ease: 'easeOut' }
+                                  : emojiHold === 'warning' ? { rotate: { duration: 0.35, repeat: Infinity }, scale: { duration: 0 } }
+                                    : { type: 'spring', stiffness: 500, damping: 22 }
+                              }
+                            >
+                              <ReactionGlyph value={convEmoji} size={22} />
+                            </motion.span>
                           </button>
-                        )
-                      ) : (
-                        /* Conversation emoji (Messenger's like button): tap sends it,
-                           hold to inflate it, hold too long and it pops. onClick only
-                           covers keyboard activation (detail 0). */
-                        <button
-                          type="button"
-                          onClick={(e) => { if (e.detail === 0) doSend({ text: convEmoji, emojiSize: 1, queue: showQueueOption }); }}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onPointerDown={startEmojiHold}
-                          onPointerUp={() => endEmojiHold(true)}
-                          onPointerLeave={() => endEmojiHold(false)}
-                          onPointerCancel={() => endEmojiHold(false)}
-                          onContextMenu={(e) => e.preventDefault()}
-                          disabled={!canSend || !isCharActive || sendingRef.current || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
-                          aria-label="Send the conversation emoji, hold to make it bigger"
-                          title="Tap to send, hold to make it bigger"
-                          style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
-                          className="relative flex items-center justify-center h-10 w-10 rounded text-[22px] leading-none select-none hover:bg-surface-variant/30 transition-colors disabled:opacity-30"
-                        >
-                          <motion.span
-                            className="relative z-10 inline-block leading-none"
-                            style={{ originX: 1, originY: 1 }}
-                            animate={
-                              emojiHold === 'growing' ? { scale: 3.2, rotate: 0, opacity: 1 }
-                                : emojiHold === 'warning' ? { scale: 3.2, rotate: [0, -10, 10, -10, 10, 0], opacity: 1 }
-                                  : emojiHold === 'popped' ? { scale: 0, rotate: 0, opacity: 0 }
-                                    : { scale: 1, rotate: 0, opacity: 1 }
-                            }
-                            transition={
-                              emojiHold === 'growing' ? { duration: EMOJI_GROW_MS / 1000, ease: 'easeOut' }
-                                : emojiHold === 'warning' ? { rotate: { duration: 0.35, repeat: Infinity }, scale: { duration: 0 } }
-                                  : { type: 'spring', stiffness: 500, damping: 22 }
-                            }
-                          >
-                            <ReactionGlyph value={convEmoji} size={22} />
-                          </motion.span>
-                        </button>
-                      )}
+                        )}
                       </motion.div>
                     </AnimatePresence>
                   </div>
                 </div>
-                </div>
               </div>
-
-              {(!isMobile || !connected) && (
-                <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
-                  <span className="text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
-                  {connected ? (
-                    <span className="text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                      Uplink stable
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-system-code text-amber-400 flex items-center gap-1 ml-auto">
-                      <span className="material-symbols-outlined text-[14px]">wifi_tethering_off</span>
-                      Uplink lost, reconnecting
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
-            )}
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">
-            <span className="material-symbols-outlined text-[64px] mb-4 opacity-20">terminal</span>
-            <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet</p>
-            <p className="text-xs max-w-md">Pick a contact, group or NPC to open a conversation.</p>
-          </div>
-        )}
 
-        {error && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded shadow-lg z-50 flex items-center gap-2 border border-error/50">
-            <span className="material-symbols-outlined text-sm">error</span>
-            <span className="text-sm font-bold">{error}</span>
-            <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
-          </div>
-        )}
-
-        {/* Message Reactions Modal */}
-        {forwardingMsg && (
-          <ForwardPicker
-            forwardOf={{ kind: { user: 'dm', group: 'group', npc: 'npc' }[selectedContact?.type], id: forwardingMsg.id }}
-            targets={forwardTargets}
-            onClose={() => setForwardingMsg(null)}
-          />
-        )}
-        {viewingReactionsMsg && createPortal(
-          <div
-            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-            onClick={() => setViewingReactionsMsg(null)}
-          >
-            <div
-              className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-sm max-h-[75vh] flex flex-col shadow-[0_0_25px_rgba(0,0,0,0.8)]"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-primary">thumb_up</span>
-                  Message Reactions
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setViewingReactionsMsg(null)}
-                  className="text-on-surface-variant hover:text-white p-1 rounded transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
-                </button>
-              </div>
-
-              {/* Reaction filter tabs */}
-              <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant/30 overflow-x-auto custom-scrollbar shrink-0 bg-surface-container-high/40">
-                <button
-                  type="button"
-                  onClick={() => setSelectedReactionTab('all')}
-                  className={`px-2.5 py-1 rounded-full text-xs font-system-code transition-colors flex items-center gap-1 ${
-                    selectedReactionTab === 'all'
-                      ? 'bg-primary text-on-primary font-bold'
-                      : 'bg-surface-container-highest text-on-surface-variant hover:text-white'
-                  }`}
-                >
-                  <span>All</span>
-                  <span className="opacity-80">
-                    {(reactionsByMsgId[viewingReactionsMsg.id] || []).reduce((acc, r) => acc + (r.count || 0), 0)}
+            {(!isMobile || !connected) && (
+              <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
+                <span className="text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
+                {connected ? (
+                  <span className="text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                    Uplink stable
                   </span>
-                </button>
-                {(reactionsByMsgId[viewingReactionsMsg.id] || []).map(r => (
-                  <button
-                    key={r.emoji}
-                    type="button"
-                    onClick={() => setSelectedReactionTab(r.emoji)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-system-code transition-colors flex items-center gap-1.5 ${
-                      selectedReactionTab === r.emoji
-                        ? 'bg-primary text-on-primary font-bold'
-                        : 'bg-surface-container-highest text-on-surface-variant hover:text-white'
-                    }`}
-                  >
-                    <ReactionGlyph value={r.emoji} size={13} />
-                    <span>{r.count}</span>
-                  </button>
-                ))}
+                ) : (
+                  <span className="text-[10px] font-system-code text-amber-400 flex items-center gap-1 ml-auto">
+                    <span className="material-symbols-outlined text-[14px]">wifi_tethering_off</span>
+                    Uplink lost, reconnecting
+                  </span>
+                )}
               </div>
-
-              {/* Reactors list */}
-              <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
-                {(() => {
-                  const reactions = reactionsByMsgId[viewingReactionsMsg.id] || [];
-                  const filtered = selectedReactionTab === 'all'
-                    ? reactions.flatMap(r => (r.reactors || []).map(u => ({ ...u, emoji: r.emoji })))
-                    : (reactions.find(r => r.emoji === selectedReactionTab)?.reactors || []).map(u => ({ ...u, emoji: selectedReactionTab }));
-
-                  if (!filtered.length) {
-                    return (
-                      <div className="text-center py-6 text-on-surface-variant/60 text-xs font-system-code">
-                        No reactions recorded
-                      </div>
-                    );
-                  }
-
-                  return filtered.map((u, idx) => (
-                    <div
-                      key={`${u.id}:${u.emoji}:${idx}`}
-                      className="flex items-center justify-between p-2 rounded bg-surface-container-highest/50 border border-outline-variant/20 hover:border-outline-variant/40 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 shrink-0">
-                          <Avatar userId={u.npcId ? null : u.id} npcId={u.npcId} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-bold text-white truncate">{u.name}</span>
-                          {u.clan && (
-                            <span className="text-[10px] text-primary/80 uppercase font-system-code truncate">{u.clan}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="shrink-0 pl-2">
-                        <ReactionGlyph value={u.emoji} size={18} />
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-          </div>,
-          document.body
+            )}
+          </div>
         )}
+      </>
+    ) : (
+      <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">
+        <span className="material-symbols-outlined text-[64px] mb-4 opacity-20">terminal</span>
+        <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet</p>
+        <p className="text-xs max-w-md">Pick a contact, group or NPC to open a conversation.</p>
+      </div>
+    )}
 
-        {/* Full Emoji Reaction Picker Modal */}
-        {fullReactionPickerFor && createPortal(
-          <div
-            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-            onClick={() => setFullReactionPickerFor(null)}
-          >
-            <div
-              data-reaction-ui="true"
-              className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-[350px] shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col"
-              onClick={e => e.stopPropagation()}
+    {error && (
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded shadow-lg z-50 flex items-center gap-2 border border-error/50">
+        <span className="material-symbols-outlined text-sm">error</span>
+        <span className="text-sm font-bold">{error}</span>
+        <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
+      </div>
+    )}
+
+    {/* Message Reactions Modal */}
+    {forwardingMsg && (
+      <ForwardPicker
+        forwardOf={{ kind: { user: 'dm', group: 'group', npc: 'npc' }[selectedContact?.type], id: forwardingMsg.id }}
+        targets={forwardTargets}
+        onClose={() => setForwardingMsg(null)}
+      />
+    )}
+    {viewingReactionsMsg && createPortal(
+      <div
+        className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+        onClick={() => setViewingReactionsMsg(null)}
+      >
+        <div
+          className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-sm max-h-[75vh] flex flex-col shadow-[0_0_25px_rgba(0,0,0,0.8)]"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-primary">thumb_up</span>
+              Message Reactions
+            </h3>
+            <button
+              type="button"
+              onClick={() => setViewingReactionsMsg(null)}
+              className="text-on-surface-variant hover:text-white p-1 rounded transition-colors"
             >
-              <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0 bg-surface-container-highest">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-primary">add_reaction</span>
-                  Add Reaction
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setFullReactionPickerFor(null)}
-                  className="text-on-surface-variant hover:text-white transition-colors"
-                  aria-label="Close"
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+
+          {/* Reaction filter tabs */}
+          <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant/30 overflow-x-auto custom-scrollbar shrink-0 bg-surface-container-high/40">
+            <button
+              type="button"
+              onClick={() => setSelectedReactionTab('all')}
+              className={`px-2.5 py-1 rounded-full text-xs font-system-code transition-colors flex items-center gap-1 ${selectedReactionTab === 'all'
+                  ? 'bg-primary text-on-primary font-bold'
+                  : 'bg-surface-container-highest text-on-surface-variant hover:text-white'
+                }`}
+            >
+              <span>All</span>
+              <span className="opacity-80">
+                {(reactionsByMsgId[viewingReactionsMsg.id] || []).reduce((acc, r) => acc + (r.count || 0), 0)}
+              </span>
+            </button>
+            {(reactionsByMsgId[viewingReactionsMsg.id] || []).map(r => (
+              <button
+                key={r.emoji}
+                type="button"
+                onClick={() => setSelectedReactionTab(r.emoji)}
+                className={`px-2.5 py-1 rounded-full text-xs font-system-code transition-colors flex items-center gap-1.5 ${selectedReactionTab === r.emoji
+                    ? 'bg-primary text-on-primary font-bold'
+                    : 'bg-surface-container-highest text-on-surface-variant hover:text-white'
+                  }`}
+              >
+                <ReactionGlyph value={r.emoji} size={13} />
+                <span>{r.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Reactors list */}
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
+            {(() => {
+              const reactions = reactionsByMsgId[viewingReactionsMsg.id] || [];
+              const filtered = selectedReactionTab === 'all'
+                ? reactions.flatMap(r => (r.reactors || []).map(u => ({ ...u, emoji: r.emoji })))
+                : (reactions.find(r => r.emoji === selectedReactionTab)?.reactors || []).map(u => ({ ...u, emoji: selectedReactionTab }));
+
+              if (!filtered.length) {
+                return (
+                  <div className="text-center py-6 text-on-surface-variant/60 text-xs font-system-code">
+                    No reactions recorded
+                  </div>
+                );
+              }
+
+              return filtered.map((u, idx) => (
+                <div
+                  key={`${u.id}:${u.emoji}:${idx}`}
+                  className="flex items-center justify-between p-2 rounded bg-surface-container-highest/50 border border-outline-variant/20 hover:border-outline-variant/40 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
-                </button>
-              </div>
-              <div className="p-1">
-                <React.Suspense fallback={<div className="p-8 text-center text-xs text-on-surface-variant font-system-code">Loading emojis...</div>}>
-                  <EmojiPicker
-                    theme="dark"
-                    onEmojiClick={(emojiData) => {
-                      const clanTag = emojiData.isCustom && emojiData.names && emojiData.names[0]
-                        ? emojiData.names[0].replace(/\s+/g, '_')
-                        : (emojiData.unified || 'unknown');
-                      const token = emojiData.isCustom ? `:${clanTag}:` : emojiData.emoji;
-                      toggleReaction(fullReactionPickerFor, token);
-                      setFullReactionPickerFor(null);
-                      setReactionPickerFor(null);
-                    }}
-                    customEmojis={customClanEmojis}
-                    categories={EMOJI_PICKER_CATEGORIES}
-                    searchDisabled={false}
-                    width="100%"
-                    height={380}
-                  />
-                </React.Suspense>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-        {actionSheetMsg && renderActionSheet()}
-        {detailsOpen && selectedContact && renderDetailsPanel()}
-      </motion.main>
-    </div>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 shrink-0">
+                      <Avatar userId={u.npcId ? null : u.id} npcId={u.npcId} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-white truncate">{u.name}</span>
+                      {u.clan && (
+                        <span className="text-[10px] text-primary/80 uppercase font-system-code truncate">{u.clan}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 pl-2">
+                    <ReactionGlyph value={u.emoji} size={18} />
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+
+    {/* Full Emoji Reaction Picker Modal */}
+    {fullReactionPickerFor && createPortal(
+      <div
+        className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+        onClick={() => setFullReactionPickerFor(null)}
+      >
+        <div
+          data-reaction-ui="true"
+          className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-[350px] shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0 bg-surface-container-highest">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-primary">add_reaction</span>
+              Add Reaction
+            </h3>
+            <button
+              type="button"
+              onClick={() => setFullReactionPickerFor(null)}
+              className="text-on-surface-variant hover:text-white transition-colors"
+              aria-label="Close"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+          <div className="p-1">
+            <React.Suspense fallback={<div className="p-8 text-center text-xs text-on-surface-variant font-system-code">Loading emojis...</div>}>
+              <EmojiPicker
+                theme="dark"
+                onEmojiClick={(emojiData) => {
+                  const clanTag = emojiData.isCustom && emojiData.names && emojiData.names[0]
+                    ? emojiData.names[0].replace(/\s+/g, '_')
+                    : (emojiData.unified || 'unknown');
+                  const token = emojiData.isCustom ? `:${clanTag}:` : emojiData.emoji;
+                  toggleReaction(fullReactionPickerFor, token);
+                  setFullReactionPickerFor(null);
+                  setReactionPickerFor(null);
+                }}
+                customEmojis={customClanEmojis}
+                categories={EMOJI_PICKER_CATEGORIES}
+                searchDisabled={false}
+                width="100%"
+                height={380}
+              />
+            </React.Suspense>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    {actionSheetMsg && renderActionSheet()}
+    {detailsOpen && selectedContact && renderDetailsPanel()}
+  </motion.main>
+    </div >
   );
 }
