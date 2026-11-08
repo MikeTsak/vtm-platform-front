@@ -10,7 +10,7 @@ import { useIsMobile } from '../../utils/useMediaQuery';
 
 const EditorToolbar = ({ onCmd }) => (
   <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '6px', borderBottom: '1px solid var(--glass-border)' }}>
-    {[['B', 'bold'], ['I', 'italic'], ['U', 'underline'], ['H3', 'formatBlock', 'H3']].map(([lbl, cmd, val]) => (
+    {[['B', 'bold'], ['I', 'italic'], ['U', 'underline'], ['S', 'strikeThrough'], ['H3', 'formatBlock', 'H3']].map(([lbl, cmd, val]) => (
       <button key={lbl} type="button" onClick={() => onCmd(cmd, val)} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-color)', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>{lbl}</button>
     ))}
   </div>

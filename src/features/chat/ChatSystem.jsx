@@ -488,6 +488,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [mediaList, setMediaList] = useState({ items: [], hasMore: false, loaded: false });
+  const [pinnedList, setPinnedList] = useState({ items: [], loaded: false, loading: false });
 
   // EDIT/DELETE STATES
   const [editingMsgId, setEditingMsgId] = useState(null);
@@ -1089,12 +1090,18 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [socketRefreshTick, setSocketRefreshTick] = useState(0);
   useEffect(() => {
     const bump = coalesce(() => setSocketRefreshTick((t) => t + 1), { delay: 300, gap: 2000 });
-    socket.on('chat:refresh', bump);
+    const handleRefresh = (payload) => {
+      if (payload?.type === 'pin' && payload?.messageId !== undefined && payload?.is_pinned !== undefined) {
+        setMessages(prev => prev.map(m => m.id === payload.messageId ? { ...m, is_pinned: payload.is_pinned } : m));
+      }
+      bump();
+    };
+    socket.on('chat:refresh', handleRefresh);
     socket.on('chat:reactions', bump);
     socket.on('connect', bump);
     return () => {
       bump.cancel();
-      socket.off('chat:refresh', bump);
+      socket.off('chat:refresh', handleRefresh);
       socket.off('chat:reactions', bump);
       socket.off('connect', bump);
     };
@@ -1317,7 +1324,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
         sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from,
+        is_pinned: Boolean(m.is_pinned), pinned_at: m.pinned_at || null, pinned_by: m.pinned_by || null,
       }));
     } else if (c.type === 'user') {
       res = await api.get(`/chat/history/${c.id}?${qs}`);
@@ -1325,20 +1333,23 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         id: m.id, body: m.body, created_at: m.created_at,
         read_at: m.read_at, delivered_at: m.delivered_at,
         sender_id: m.sender_id,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from,
+        is_pinned: Boolean(m.is_pinned), pinned_at: m.pinned_at || null, pinned_by: m.pinned_by || null,
       }));
     } else if (isAdmin) {
       res = await api.get(`/admin/chat/npc-history/${c.id}/${selectedPlayerId}?${qs}`);
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from,
+        is_pinned: Boolean(m.is_pinned), pinned_at: m.pinned_at || null, pinned_by: m.pinned_by || null,
       }));
     } else {
       res = await api.get(`/chat/npc-history/${c.id}?${qs}`);
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at,
         sender_id: m.from_side === 'user' ? currentUser.id : 'npc', _from: m.from_side,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m), forwarded_from: m.forwarded_from,
+        is_pinned: Boolean(m.is_pinned), pinned_at: m.pinned_at || null, pinned_by: m.pinned_by || null,
       }));
     }
     msgs.sort(byTime);
@@ -2184,6 +2195,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     : selectedContact.type === 'npc' && isAdmin
       ? (selectedPlayerId ? { kind: 'npc', id: selectedContact.id, user_id: selectedPlayerId } : null)
       : { kind: selectedContact.type, id: selectedContact.id };
+  const convParamsKey = convParams ? JSON.stringify(convParams) : '';
 
   const saveConvSettings = async (patch) => {
     if (!convParams) return;
@@ -2207,6 +2219,46 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setMediaList(cur => ({ items: more ? [...cur.items, ...data.media] : data.media, hasMore: data.has_more, loaded: true }));
     } catch (e) {
       setMediaList(cur => ({ ...cur, loaded: true }));
+    }
+  };
+
+  const loadPinnedMessages = useCallback(async () => {
+    if (!convParams) return;
+    setPinnedList(cur => ({ ...cur, loading: true }));
+    try {
+      const { data } = await api.get('/chat/pinned', { params: convParams });
+      setPinnedList({ items: data.messages || [], loaded: true, loading: false });
+    } catch (e) {
+      setPinnedList(cur => ({ ...cur, loaded: true, loading: false }));
+    }
+  }, [convParamsKey]);
+
+  const togglePinMessage = async (item) => {
+    if (!reactionTable || String(item.id).startsWith('temp_')) return;
+    const nextPinned = !item.is_pinned;
+    setMessages(prev => prev.map(m => m.id === item.id ? { ...m, is_pinned: nextPinned } : m));
+    setPinnedList(cur => {
+      if (nextPinned) {
+        if (cur.items.some(p => p.id === item.id)) return cur;
+        const pinnedItem = {
+          ...item,
+          is_pinned: 1,
+          pinned_at: new Date().toISOString(),
+          pinned_by: currentUser?.id,
+        };
+        return { ...cur, items: [pinnedItem, ...cur.items] };
+      } else {
+        return { ...cur, items: cur.items.filter(p => p.id !== item.id) };
+      }
+    });
+
+    try {
+      await api.post(`/chat/messages/${item.id}/pin`, { table: reactionTable, is_pinned: nextPinned });
+      toast.success(nextPinned ? 'Message pinned' : 'Message unpinned');
+    } catch (err) {
+      setMessages(prev => prev.map(m => m.id === item.id ? { ...m, is_pinned: !nextPinned } : m));
+      loadPinnedMessages();
+      toast.error(formatApiError(err, 'Failed to update pin'));
     }
   };
 
@@ -2315,11 +2367,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   }, [chatParam, users, groups, npcs]);
 
   // Details panel: first media page on open, debounced search while typing.
-  const convParamsKey = convParams ? JSON.stringify(convParams) : '';
   useEffect(() => {
     if (detailsOpen && convParamsKey && !mediaList.loaded) loadMedia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailsOpen, convParamsKey, mediaList.loaded]);
+  useEffect(() => {
+    if (convParamsKey) {
+      loadPinnedMessages();
+    } else {
+      setPinnedList({ items: [], loaded: false, loading: false });
+    }
+  }, [convParamsKey, socketRefreshTick, loadPinnedMessages]);
   useEffect(() => {
     const q = searchQ.trim();
     if (!detailsOpen || !convParamsKey || q.length < 2) { setSearchResults(null); return; }
@@ -2558,6 +2616,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const actions = [
       canReply && { icon: 'reply', label: 'Reply', fn: () => startReply(item) },
       canForward && { icon: 'forward', label: 'Forward', fn: () => setForwardingMsg(item) },
+      !String(item.id).startsWith('temp_') && {
+        icon: item.is_pinned ? 'keep_off' : 'push_pin',
+        label: item.is_pinned ? 'Unpin message' : 'Pin message',
+        fn: () => togglePinMessage(item),
+      },
       item.body && { icon: 'content_copy', label: 'Copy text', fn: () => handleCopyMessage(item.body) },
       reactionsByMsgId[item.id]?.length > 0 && { icon: 'groups', label: 'See reactions', fn: () => { setSelectedReactionTab('all'); setViewingReactionsMsg(item); } },
       canEdit && !editingMsgId && { icon: 'edit', label: 'Edit', fn: () => { setEditingMsgId(item.id); setEditBody(item.body); } },
@@ -2751,6 +2814,81 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     <div className="text-[14px] text-on-surface line-clamp-2 break-words mt-0.5">{renderMessageBody(r.body)}</div>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Pinned Messages */}
+            <div className={sectionLabel}>Pinned messages ({pinnedList.items.length})</div>
+            {pinnedList.loading && !pinnedList.loaded ? (
+              <div className="px-4 py-2 text-[13px] text-on-surface-variant">Loading pinned messages...</div>
+            ) : pinnedList.items.length === 0 ? (
+              <div className="px-4 py-2 text-[13px] text-on-surface-variant/70">No pinned messages in this conversation.</div>
+            ) : (
+              <div className="flex flex-col gap-1.5 px-4">
+                {pinnedList.items.map(m => {
+                  const author = m.sender_name || (m.from_side === 'npc' ? selectedContact?.char_name || selectedContact?.display_name : 'Kindred');
+                  return (
+                    <div
+                      key={m.id}
+                      className="group/pin flex items-start gap-2.5 p-3 rounded-lg bg-surface-container-high/60 border border-outline-variant/40 hover:border-primary/50 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeDetails();
+                          setTimeout(() => {
+                            scrollToMessage(m.id);
+                            setFlashMsgId(m.id);
+                            setTimeout(() => setFlashMsgId(null), 2000);
+                          }, 80);
+                        }}
+                        className="flex-1 text-left min-w-0"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[12px] font-bold text-primary font-system-code truncate">{author}</span>
+                          <span className="text-[10px] text-on-surface-variant/60 font-system-code shrink-0">{formatTime(m.created_at)}</span>
+                        </div>
+                        {m.body && (
+                          <div className="text-[13px] text-on-surface line-clamp-3 break-words">
+                            {renderMessageBody(m.body)}
+                          </div>
+                        )}
+                        {m.attachment_id && (
+                          <div className="mt-1 w-16 h-16 rounded overflow-hidden bg-black/40">
+                            <ChatMedia attachmentId={m.attachment_id} thumb />
+                          </div>
+                        )}
+                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            closeDetails();
+                            setTimeout(() => {
+                              scrollToMessage(m.id);
+                              setFlashMsgId(m.id);
+                              setTimeout(() => setFlashMsgId(null), 2000);
+                            }, 80);
+                          }}
+                          title="Jump to message"
+                          aria-label="Jump to message"
+                          className="p-1.5 rounded text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">my_location</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => togglePinMessage(m)}
+                          title="Unpin message"
+                          aria-label="Unpin message"
+                          className="p-1.5 rounded text-on-surface-variant/50 hover:text-error hover:bg-surface-variant/40 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">keep_off</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -3043,7 +3181,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 <button type="button" onClick={() => setAdminTilemachosOpen(!adminTilemachosOpen)} aria-expanded={adminTilemachosOpen} className="w-full px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between hover:text-on-surface transition-colors">
                   <div className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: adminTilemachosOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
-                    ADMINS & ΤΗΛΕΜΑΧΟΣ ({usersAdminAndTilemachos.length})
+                    NOT IN PLAY ({usersAdminAndTilemachos.length})
                   </div>
               </button>
               {adminTilemachosOpen && (
@@ -3337,6 +3475,44 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           />
         )}
 
+        {/* Pinned Messages Header Banner */}
+        {pinnedList.items.length > 0 && (
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-surface-container-high/90 border-b border-outline-variant/40 backdrop-blur z-10 shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                const target = pinnedList.items[0];
+                if (target) {
+                  scrollToMessage(target.id);
+                  setFlashMsgId(target.id);
+                  setTimeout(() => setFlashMsgId(null), 2000);
+                }
+              }}
+              className="flex items-center gap-2.5 min-w-0 text-left flex-1 hover:opacity-90 transition-opacity"
+              title="Jump to this pinned message"
+            >
+              <span className="material-symbols-outlined text-[18px] text-primary shrink-0">push_pin</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-system-code font-bold text-primary tracking-wide flex items-center gap-2">
+                  <span>Pinned message{pinnedList.items.length > 1 ? ` (1 of ${pinnedList.items.length})` : ''}</span>
+                  <span className="text-[10px] text-on-surface-variant/70 font-normal">Click to jump</span>
+                </div>
+                <div className="text-[12px] text-on-surface truncate">
+                  {pinnedList.items[0].body || (pinnedList.items[0].attachment_id ? 'Attached Media' : 'Pinned message')}
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={openDetails}
+              className="text-[11px] font-system-code text-on-surface-variant hover:text-primary transition-colors shrink-0 px-2 py-1 rounded bg-surface-variant/30"
+              title="View all pinned messages in Details"
+            >
+              View all
+            </button>
+          </div>
+        )}
+
         {/* Chat History Area */}
         <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef} onScroll={handleListScroll}>
           <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2 min-h-[20px]">
@@ -3428,6 +3604,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         ? `relative w-fit max-w-full select-none leading-none rounded ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''}`
                         : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border-r border-t border-b border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
                     >
+
+                      {/* Pinned indicator on the message itself */}
+                      {item.is_pinned && (
+                        <div className={`flex items-center gap-1 text-[10px] font-system-code font-bold mb-1 ${mine ? 'text-white/90 justify-end' : 'text-primary'}`}>
+                          <span className="material-symbols-outlined text-[13px]">push_pin</span>
+                          <span>Pinned</span>
+                        </div>
+                      )}
 
                       {/* Forwarded copy: its original author, named by the server */}
                       {item.forwarded_from && (
@@ -3559,6 +3743,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       {!String(item.id).startsWith('temp_') && (
                         <button
                           type="button"
+                          onClick={() => togglePinMessage(item)}
+                          title={item.is_pinned ? 'Unpin message' : 'Pin message'}
+                          className={`text-[10px] transition-colors flex items-center gap-0.5 ${item.is_pinned ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
+                        >
+                          <span className="material-symbols-outlined text-[11px]">{item.is_pinned ? 'keep_off' : 'push_pin'}</span>
+                          {item.is_pinned ? 'Unpin' : 'Pin'}
+                        </button>
+                      )}
+                      {!String(item.id).startsWith('temp_') && (
+                        <button
+                          type="button"
                           data-reaction-ui="true"
                           onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
                           title="React"
@@ -3635,6 +3830,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
                     >
                       <span className="material-symbols-outlined text-[20px]">forward</span>
+                    </button>
+                  )}
+                  {!String(item.id).startsWith('temp_') && (
+                    <button
+                      type="button"
+                      onClick={() => togglePinMessage(item)}
+                      title={item.is_pinned ? 'Unpin message' : 'Pin message'}
+                      aria-label={item.is_pinned ? 'Unpin this message' : 'Pin this message'}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${item.is_pinned ? 'text-primary bg-primary/10' : 'text-on-surface-variant hover:text-primary hover:bg-surface-variant/40'}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{item.is_pinned ? 'keep_off' : 'push_pin'}</span>
                     </button>
                   )}
                   {item.body && (

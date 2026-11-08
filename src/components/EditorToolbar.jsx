@@ -8,6 +8,7 @@ const TOOLS = [
   { cmd: 'bold', icon: 'format_bold', label: 'Bold' },
   { cmd: 'italic', icon: 'format_italic', label: 'Italic' },
   { cmd: 'underline', icon: 'format_underlined', label: 'Underline' },
+  { cmd: 'strikeThrough', icon: 'strikethrough_s', label: 'Strikethrough' },
   { sep: true },
   { cmd: 'formatBlock', value: '<h2>', icon: 'title', label: 'Heading' },
   { cmd: 'formatBlock', value: '<h3>', icon: 'text_fields', label: 'Subheading' },

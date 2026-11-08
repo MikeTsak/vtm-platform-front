@@ -68,6 +68,7 @@ const EditorToolbar = ({ onCmd }) => (
     <button type="button" onClick={() => onCmd('bold')} title="Bold"><b>B</b></button>
     <button type="button" onClick={() => onCmd('italic')} title="Italic"><i>I</i></button>
     <button type="button" onClick={() => onCmd('underline')} title="Underline"><u>U</u></button>
+    <button type="button" onClick={() => onCmd('strikeThrough')} title="Strikethrough"><s>S</s></button>
     <button type="button" onClick={() => onCmd('formatBlock', 'H3')} title="Heading 3">H3</button>
     <button type="button" className={styles.desktopOnly} onClick={() => onCmd('justifyLeft')} title="Align Left">L</button>
     <button type="button" className={styles.desktopOnly} onClick={() => onCmd('justifyCenter')} title="Align Center">C</button>
@@ -96,6 +97,16 @@ export const TextEditor = ({ value, onChange, placeholder, disabled = false }) =
 
   const handleInput = (e) => {
     onChange(e.currentTarget.innerHTML);
+    // Keep caret smoothly in view when typing near the bottom
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && contentRef.current) {
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const containerRect = contentRef.current.getBoundingClientRect();
+      if (rect.bottom > 0 && rect.bottom > containerRect.bottom - 24) {
+        contentRef.current.scrollTop += (rect.bottom - containerRect.bottom + 32);
+      }
+    }
   };
 
   return (
@@ -991,7 +1002,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
                 <span>
                   SURFACE WEB COMMS ARE CURRENTLY OFFLINE : {nextOpening ? `OPENS AGAIN ${nextOpening.day.toUpperCase()} AT ${nextOpening.time} (${nextOpening.date})` : 'MESSAGE SENDING IS DISABLED'}
-                  {isAdmin ? ' — queue this reply below, or send now anyway.' : ''}
+                  {isAdmin ? ' : queue this reply below, or send now anyway.' : ''}
                 </span>
               </div>
             )}
@@ -1028,7 +1039,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                   </button>
                 ) : !commsEnabled && isAdmin ? (
                   <>
-                    <button onClick={() => handleEmailReply({ queue: true })} className={styles.btnSec} disabled={replySending || !replyHasContent} title="Queue — sends automatically when SurfaceWeb reopens">
+                    <button onClick={() => handleEmailReply({ queue: true })} className={styles.btnSec} disabled={replySending || !replyHasContent} title="Queue: sends automatically when SurfaceWeb reopens">
                       Queue
                     </button>
                     <button onClick={() => handleEmailReply({ queue: false })} className={styles.btnPri} disabled={replySending || !replyHasContent} title="Send now anyway (bypasses the offline gate)">
@@ -1079,7 +1090,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               value={emailForm.subject}
               onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
             />
-            <div style={{ flex: 1, minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
+            <div className={styles.modalEditorWrapper}>
               <TextEditor
                 value={emailForm.body}
                 onChange={(val) => setEmailForm({ ...emailForm, body: val })}
@@ -1236,7 +1247,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
             />
 
             <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Message</label>
-            <div style={{ flex: 1, minHeight: '160px', display: 'flex', flexDirection: 'column' }}>
+            <div className={styles.modalEditorWrapper}>
               <TextEditor
                 value={adminDmForm.body}
                 onChange={val => setAdminDmForm({ ...adminDmForm, body: val })}
@@ -1246,7 +1257,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
 
             {!commsEnabled && (
               <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: 8 }}>
-                SurfaceWeb is offline — queue this DM to auto-send when it reopens, or send it now anyway.
+                SurfaceWeb is offline: queue this DM to auto send when it reopens, or send it now anyway.
               </p>
             )}
 
@@ -1265,7 +1276,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                     className={styles.btnSec}
                     onClick={() => handleAdminDm({ queue: true })}
                     disabled={adminDmSending || !dmReady}
-                    title="Queue — sends automatically when SurfaceWeb reopens"
+                    title="Queue: sends automatically when SurfaceWeb reopens"
                   >
                     {adminDmSending ? 'Sending...' : 'Queue'}
                   </button>

@@ -16,6 +16,10 @@ function prepareMarkdown(rawText, whiteCrest) {
   if (!rawText) return '';
   let str = String(rawText).replace(/\r\n/g, '\n');
 
+  // Convert standard inline HTML formatting to markdown
+  str = str.replace(/<(b|strong)>(.*?)<\/\1>/gis, '**$2**');
+  str = str.replace(/<(i|em)>(.*?)<\/\1>/gis, '*$2*');
+
   // Strip or flatten outer div/p wrappers from contentEditable inputs without destroying layout
   str = str.replace(/<div><br\s*\/?><\/div>/gi, '\n\n');
   str = str.replace(/<\/div>\s*<div>/gi, '\n\n');
@@ -43,7 +47,7 @@ function prepareMarkdown(rawText, whiteCrest) {
  */
 function isComplexHtml(text) {
   if (!text) return false;
-  return /<(table|thead|tbody|iframe|figure|details|summary|ol[^>]*class|ul[^>]*class|div[^>]*class|span[^>]*style)/i.test(text);
+  return /<(table|thead|tbody|iframe|figure|details|summary|ol[^>]*class|ul[^>]*class|div[^>]*class|span[^>]*style|s\b|strike\b|del\b|u\b)/i.test(text);
 }
 
 export default function MarkdownBody({

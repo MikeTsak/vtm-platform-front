@@ -1942,12 +1942,32 @@
 
 .editable {
   min-height: 100px;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px 14px;
   color: var(--text-primary);
   font-size: 0.9rem;
   line-height: 1.65;
   outline: none;
   caret-color: var(--accent-purple);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-border) transparent;
+}
+.editable::-webkit-scrollbar {
+  width: 6px;
+}
+.editable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.editable::-webkit-scrollbar-thumb {
+  background-color: var(--glass-border);
+  border-radius: 4px;
+}
+.editable::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-purple);
 }
 
 .editable:focus {
