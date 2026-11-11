@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom';
 import styles from '../../styles/Coteries.module.css';
 import Avatar from '../../components/Avatar';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
-import { Card, Dots, DotPicker, Empty, Modal, Muted, Stat, Tabs } from './ui';
+import { Card, Dots, DotPicker, Empty, Modal, Muted, Stat, StatusNotice, Tabs } from './ui';
 import {
   CHASSE_SIZE_TABLE,
   CONTRIBUTABLE_BACKGROUNDS,
@@ -421,6 +421,7 @@ export default function CoterieSheet({
         }
       >
         {coterie.concept && <p className={styles.concept}>{coterie.concept}</p>}
+        <StatusNotice coterie={coterie} />
         {coterie.rules_override && (
           <Muted tone="warn">
             A Storyteller has flagged this coterie as an approved exception to the point rules.
@@ -436,9 +437,7 @@ export default function CoterieSheet({
               {events.map((ev) => (
                 <li key={ev.id} className={styles.coterieEventItem}>
                   <span className={styles.coterieEventText}>
-                    {ev.kind === 'member_left'
-                      ? `${ev.target_name || 'Character'} left the coterie`
-                      : (ev.note || ev.target_name || 'Event')}
+                    {ev.note || (ev.kind === 'member_left' ? `${ev.target_name || 'Character'} left the coterie` : ev.target_name || 'Event')}
                   </span>
                   <span className={styles.coterieEventTime}>
                     {formatAthensDateTime(ev.created_at)}
@@ -794,15 +793,17 @@ export default function CoterieSheet({
             <summary className={styles.summaryLink}>Ledger ({xpLog.length})</summary>
             <ul className={styles.ledgerList}>
               {xpLog.map((row) => {
-                if (row.kind === 'member_left') {
+                // No XP moves on these: membership, dormancy, dissolution, contributions taken back.
+                if (row.kind === 'member_left' || row.kind === 'status' || row.kind === 'revoked') {
+                  const icon = row.kind === 'member_left' ? 'fa-user-minus' : row.kind === 'revoked' ? 'fa-rotate-left' : 'fa-hourglass-half';
                   return (
                     <li key={row.id} className={styles.ledgerRow}>
                       <span className={styles.ledgerAmount} data-sign="event">
-                        <i className="fa-solid fa-user-minus" />
+                        <i className={`fa-solid ${icon}`} />
                       </span>
                       <span className={styles.ledgerBody}>
                         <span className={styles.ledgerTitle}>
-                          {row.target_name || 'Character'} left the coterie
+                          {row.note || `${row.target_name || 'Character'} left the coterie`}
                         </span>
                         <span className={styles.ledgerMeta}>
                           {formatAthensDateTime(row.created_at)}

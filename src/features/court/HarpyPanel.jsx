@@ -123,7 +123,9 @@ export default function HarpyPanel() {
   const boons = useMemo(() => boonsData?.boons || [], [boonsData]);
   const { totals, people, debtors, creditors } = useLedger(boons);
   const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [transferTarget, setTransferTarget] = useState(null);
+  const closeForm = () => { setShowForm(false); setEditTarget(null); };
   const [who, setWho] = useState('');
 
   const person = people.find(p => key(p.name) === who);
@@ -149,6 +151,7 @@ export default function HarpyPanel() {
           <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => resolve(b, 'paid')}>Repaid</button>
           <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => resolve(b, 'excused')}>Excused</button>
           <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => setTransferTarget(b)}>Transfer</button>
+          <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => setEditTarget(b)}>Edit</button>
         </div>
       )}
     </div>
@@ -225,10 +228,10 @@ export default function HarpyPanel() {
         <Guide />
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
+      {(showForm || editTarget) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={closeForm}>
           <div className="bg-surface-container-high gothic-etched-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <BoonForm entities={entData?.entities || []} boon={null} onSave={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
+            <BoonForm entities={entData?.entities || []} boon={editTarget} onSave={closeForm} onCancel={closeForm} />
           </div>
         </div>
       )}

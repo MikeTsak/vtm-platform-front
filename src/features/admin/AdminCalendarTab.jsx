@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
+import { MIN_MEMBERS } from '../../data/coterieRules';
 import styles from '../../styles/Admin.module.css';
 
 const DEFAULT_CLANS = [
@@ -18,20 +19,22 @@ const DEFAULT_MOCK_NAMES = [
 ];
 
 // One open Blood Hunt and its end date, editable from the Calendar.
-function HuntEndRow({ hunt, onSave }) {
+// One dated thing with an editable end: a Blood Hunt, a dormant coterie's deadline.
+// onClear is optional (a coterie deadline can move but not disappear).
+function EndDateRow({ name, detail, value, label, onSave, onClear }) {
   const toLocal = (d) => {
     if (!d) return '';
     const t = new Date(d);
     return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
-  const [value, setValue] = useState(toLocal(hunt.expires_at));
+  const [local, setLocal] = useState(toLocal(value));
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.82rem' }}>
-      <span style={{ fontWeight: 700, color: 'var(--text-primary)', minWidth: '10rem' }}>{hunt.target_name}</span>
-      <span style={{ color: 'var(--text-secondary)' }}>{hunt.status === 'proposed' ? 'awaiting the Prince' : 'active'}</span>
-      <input type="datetime-local" value={value} onChange={e => setValue(e.target.value)} className={styles.input} style={{ width: 'auto', padding: '4px 6px' }} aria-label={`End of the Blood Hunt on ${hunt.target_name}`} />
-      <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onSave(hunt, value)} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Save end</button>
-      {hunt.expires_at && <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onSave(hunt, null)} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>No end</button>}
+      <span style={{ fontWeight: 700, color: 'var(--text-primary)', minWidth: '10rem' }}>{name}</span>
+      <span style={{ color: 'var(--text-secondary)' }}>{detail}</span>
+      <input type="datetime-local" value={local} onChange={e => setLocal(e.target.value)} className={styles.input} style={{ width: 'auto', padding: '4px 6px' }} aria-label={label} />
+      <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onSave(local)} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Save end</button>
+      {value && onClear && <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClear} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>No end</button>}
     </div>
   );
 }
@@ -106,6 +109,7 @@ export default function AdminCalendarTab() {
   const [eventIsElysium, setEventIsElysium] = useState(false);
   const [eventElysiumName, setEventElysiumName] = useState(''); // the Keeper's name for it (Court Actions)
   const [bloodHunts, setBloodHunts] = useState([]); // open hunts; their end dates are calendar markers
+  const [dormantCoteries, setDormantCoteries] = useState([]); // their dissolution deadlines are calendar markers
   const [savingEvent, setSavingEvent] = useState(false);
 
   // Downtimes state (Single active)
@@ -187,6 +191,7 @@ export default function AdminCalendarTab() {
         api.get('/admin/live-sessions').catch(() => ({ data: { sessions: [] } }))
       ]);
       api.get('/admin/blood-hunts').then(({ data }) => setBloodHunts(data.hunts || [])).catch(() => setBloodHunts([]));
+      loadDormantCoteries();
       api.get('/system/banner').then(({ data }) => setBannerCountdown(data.banner_countdown || '')).catch(() => {});
 
       const loadedEvents = eventsRes.data?.events || [];
@@ -929,6 +934,31 @@ export default function AdminCalendarTab() {
     }
   };
 
+  // Dormant coteries' dissolution deadlines (services/coterieLifecycle.js on the server).
+  const coterieEndMap = useMemo(() => {
+    const map = {};
+    for (const c of dormantCoteries) {
+      const day = c.dissolve_at ? formatDateOnly(c.dissolve_at) : null;
+      if (day) (map[day] = map[day] || []).push(c);
+    }
+    return map;
+  }, [dormantCoteries]);
+
+  const loadDormantCoteries = () => api.get('/coteries')
+    .then(({ data }) => setDormantCoteries((data.coteries || []).filter(c => c.status === 'dormant')))
+    .catch(() => setDormantCoteries([]));
+
+  const saveCoterieDeadline = async (coterie, value) => {
+    if (!value) return showFeedback('Pick a date for the deadline', true);
+    try {
+      await api.patch(`/coteries/${coterie.id}/dissolve-at`, { dissolve_at: new Date(value).toISOString() });
+      await loadDormantCoteries();
+      showFeedback(`${coterie.name} now dissolves ${formatEuDate(value)} unless it is back to ${MIN_MEMBERS} members`);
+    } catch (error) {
+      showFeedback(formatApiError(error, 'Failed to move the deadline'), true);
+    }
+  };
+
   const saveHuntEnd = async (hunt, value) => {
     try {
       await api.patch(`/court-actions/blood-hunts/${hunt.id}`, { expires_at: value ? new Date(value).toISOString() : null });
@@ -1162,6 +1192,7 @@ export default function AdminCalendarTab() {
                   const isProjectClose = projectDeadline === dateStr;
                   const isBannerEnd = bannerCountdown.slice(0, 10) === dateStr;
                   const huntEnds = huntEndMap[dateStr] || [];
+                  const coterieEnds = coterieEndMap[dateStr] || [];
                   const wpResetFor = willpowerResetMap[dateStr];
                   const elysiumInvites = elysiumInviteMap[dateStr] || [];
 
@@ -1392,6 +1423,16 @@ export default function AdminCalendarTab() {
                           </div>
                         )}
 
+                        {coterieEnds.length > 0 && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(161, 136, 127, 0.22)', border: '1px solid #a1887f', color: '#d7ccc8', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Dissolves unless back to ${MIN_MEMBERS} members: ${coterieEnds.map(c => c.name).join(', ')}`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>hourglass_bottom</span>
+                            <span>DISSOLVES</span>
+                          </div>
+                        )}
+
                         {huntEnds.length > 0 && (
                           <div
                             style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(255, 23, 68, 0.22)', border: '1px solid #ff1744', color: '#ff8a9a', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
@@ -1491,6 +1532,10 @@ export default function AdminCalendarTab() {
             <span>Red: Blood Hunt ends (edit below, or by the Prince in Court Actions)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#a1887f' }}>hourglass_bottom</span>
+            <span>Ash: a dormant coterie dissolves unless it is back to {MIN_MEMBERS} members (edit below)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#66bb6a' }}>self_improvement</span>
             <span>Green: Superficial Willpower restored by Composure or Resolve, higher (day after a Modern Day event; follows the event date)</span>
           </div>
@@ -1503,7 +1548,34 @@ export default function AdminCalendarTab() {
               Open Blood Hunts
             </div>
             {bloodHunts.map(h => (
-              <HuntEndRow key={`${h.id}-${h.expires_at || ''}`} hunt={h} onSave={saveHuntEnd} />
+              <EndDateRow
+                key={`${h.id}-${h.expires_at || ''}`}
+                name={h.target_name}
+                detail={h.status === 'proposed' ? 'awaiting the Prince' : 'active'}
+                value={h.expires_at}
+                label={`End of the Blood Hunt on ${h.target_name}`}
+                onSave={(v) => saveHuntEnd(h, v)}
+                onClear={() => saveHuntEnd(h, null)}
+              />
+            ))}
+          </div>
+        )}
+
+        {dormantCoteries.length > 0 && (
+          <div style={{ padding: '0.75rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#a1887f' }}>hourglass_bottom</span>
+              Dormant coteries (dissolve unless back to {MIN_MEMBERS} members)
+            </div>
+            {dormantCoteries.map(c => (
+              <EndDateRow
+                key={`${c.id}-${c.dissolve_at || ''}`}
+                name={c.name}
+                detail={`${(c.members || []).length} of ${MIN_MEMBERS} members`}
+                value={c.dissolve_at}
+                label={`Dissolution deadline of ${c.name}`}
+                onSave={(v) => saveCoterieDeadline(c, v)}
+              />
             ))}
           </div>
         )}

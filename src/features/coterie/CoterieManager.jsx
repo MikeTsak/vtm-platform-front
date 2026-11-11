@@ -13,7 +13,7 @@ import api from '../../core/api';
 import { publish } from '../../utils/notification';
 import styles from '../../styles/Coteries.module.css';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
-import { Card, Empty, Muted, Spinner, Stat, Tabs } from './ui';
+import { Card, Empty, Muted, Spinner, Stat, StatusNotice, Tabs } from './ui';
 import CoterieBuilder from './CoterieBuilder';
 import CoterieSheet from './CoterieSheet';
 import { RulesOverview, TypesBrowser } from './CoterieCatalog';
@@ -458,6 +458,7 @@ export default function CoterieManager({ adminMode = false }) {
                     actions={<span className={styles.bankPill}>{c.coterie_xp} XP</span>}
                   >
                     {c.concept && <p className={styles.concept}>{c.concept}</p>}
+                    <StatusNotice coterie={c} />
                     <div className={styles.statRow}>
                       <Stat label="Hunting Diff." value={diff == null ? 'None' : diff} />
                       <Stat label="Lien" value={`+${lienBonusDice(c.traits?.lien)}`} />
@@ -490,9 +491,7 @@ export default function CoterieManager({ adminMode = false }) {
                           {c.events.map((ev) => (
                             <li key={ev.id} className={styles.coterieEventItem}>
                               <span className={styles.coterieEventText}>
-                                {ev.kind === 'member_left'
-                                  ? `${ev.target_name || 'Character'} left the coterie`
-                                  : (ev.note || ev.target_name || 'Event')}
+                                {ev.note || (ev.kind === 'member_left' ? `${ev.target_name || 'Character'} left the coterie` : ev.target_name || 'Event')}
                               </span>
                               <span className={styles.coterieEventTime}>
                                 {formatAthensDateTime(ev.created_at)}

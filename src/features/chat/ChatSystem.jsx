@@ -70,8 +70,42 @@ const EMOJI_PICKER_CATEGORIES = [
   { category: 'flags', name: 'Flags' }
 ];
 
-const renderMessageBody = (text) => {
+// Mute lengths the server accepts (PUT /chat/prefs).
+const MUTE_OPTIONS = [
+  { value: '1h', label: '1 hour' },
+  { value: '5h', label: '5 hours' },
+  { value: '1d', label: '1 day' },
+  { value: '1w', label: '1 week' },
+  { value: 'forever', label: 'Until I turn it back on' },
+];
+const mutedLabel = (until) => (until.getFullYear() >= 9999 ? 'until you unmute' : `until ${formatAthensDateTime(until)}`);
+
+// '@Name' of a group member, as the composer writes it (the server matches
+// the same way to push them). A mention of me stands out more.
+const mentionPattern = (names, me) => {
+  const list = [...new Set(names.filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!list.length) return null;
+  const esc = list.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return { re: new RegExp(`@(${esc.join('|')})(?![\\p{L}\\p{N}_])`, 'giu'), me: (me || '').toLowerCase() };
+};
+
+const renderMessageBody = (text, mention = null) => {
   if (!text) return null;
+  if (!mention) return renderCrests(text, 'c');
+  const out = [];
+  let last = 0;
+  for (const m of text.matchAll(mention.re)) {
+    if (m.index > last) out.push(...renderCrests(text.slice(last, m.index), `c${last}`));
+    const mine = m[1].toLowerCase() === mention.me;
+    out.push(<span key={`m${m.index}`} className={`chat-mention${mine ? ' chat-mention-me' : ''}`}>{m[0]}</span>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(...renderCrests(text.slice(last), `c${last}`));
+  return out;
+};
+
+// Clan tokens (':Ventrue:') become their white crest; `prefix` keeps keys unique.
+const renderCrests = (text, prefix) => {
   const clanRegex = /:([A-Za-z0-9_]+):/g;
   const parts = [];
   let lastIndex = 0;
@@ -85,7 +119,7 @@ const renderMessageBody = (text) => {
     if (clanName) {
       parts.push(
         <img
-          key={`emoji-${match.index}`}
+          key={`${prefix}-emoji-${match.index}`}
           src={localSymlogo(clanName)}
           alt={clanName}
           title={clanName}
@@ -421,6 +455,18 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [users, setUsers] = useState([]);
   const [npcs, setNpcs] = useState([]);
   const [groups, setGroups] = useState([]);
+  // My own chat-list controls (back: /chat/prefs): pins + mutes keyed
+  // 'u:<id>' / 'g:<id>' / 'n:<id>', and blocks both ways.
+  const [chatPrefs, setChatPrefs] = useState({ prefs: {}, blocked: new Set(), blockedBy: new Set() });
+  const chatPrefsRef = useRef(chatPrefs);
+  chatPrefsRef.current = chatPrefs;
+  // The name others @mention me by: the server matches it the same way
+  // (character name, else account name).
+  const myNameRef = useRef('');
+  const [savedList, setSavedList] = useState({ items: [], loaded: false });
+  const [savedOpen, setSavedOpen] = useState(false);
+  const [typing, setTyping] = useState({}); // conversation key -> { userId, until }
+  const [mentionQuery, setMentionQuery] = useState(null); // text after '@' while picking a member
   const [filter, setFilter] = useState('');
   const [adminTilemachosOpen, setAdminTilemachosOpen] = useState(false);
 
@@ -429,6 +475,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (isAdmin) return;
     api.get('/characters/me').then(r => setMyChar(r.data.character)).catch(() => { });
   }, [isAdmin]);
+
+  const myName = isAdmin ? '' : (myChar?.name || currentUser?.display_name || '');
+  myNameRef.current = myName;
 
   const isCharActive = isAdmin || (myChar && myChar.sheet && myChar.sheet.is_active === true);
 
@@ -956,6 +1005,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     setMessages([]);
     setNpcConvos([]);
     setReplyTo(null);
+    setMentionQuery(null);
     setError('');
   }, [threadKey]);
 
@@ -1024,18 +1074,75 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const isUserOnline = (id) => presence.online.has(Number(id));
   const storytellerOnline = [...presence.admins].some(id => id !== Number(currentUser?.id));
 
+  // --- My own controls: pin to top, mute, block, saved (back: migration 0086) ---
+  const prefKey = (c) => (c ? `${c.type[0]}:${c.id}` : null);
+  const prefOf = (c) => chatPrefs.prefs[prefKey(c)] || {};
+  const isPinnedChat = (c) => !!prefOf(c).pinned_at;
+  const mutedUntil = (c) => {
+    const until = prefOf(c).muted_until;
+    return until && new Date(until) > new Date() ? new Date(until) : null;
+  };
+  const blockedByMe = (c) => c?.type === 'user' && chatPrefs.blocked.has(Number(c.id));
+  const blockedMe = (c) => c?.type === 'user' && chatPrefs.blockedBy.has(Number(c.id));
+  const contactName = (c) => (c ? c.char_name || c.display_name || c.name || 'them' : '');
+
+  const saveChatPref = async (c, patch) => {
+    const key = prefKey(c);
+    try {
+      const { data } = await api.put('/chat/prefs', { key, ...patch });
+      setChatPrefs(cur => ({ ...cur, prefs: { ...cur.prefs, [key]: { pinned_at: data.pinned_at, muted_until: data.muted_until } } }));
+      if ('mute' in patch) toast.success(patch.mute ? 'Notifications muted' : 'Notifications back on');
+    } catch (e) {
+      toast.error(formatApiError(e, 'Could not save that.'));
+    }
+  };
+
+  const setBlocked = async (c, block) => {
+    if (block && !(await askConfirm({
+      title: `Block ${contactName(c)}?`,
+      message: `${contactName(c)} will see that you blocked them, and neither of you can write to the other until you unblock. Group chats are not affected.`,
+      confirmLabel: 'Block',
+      danger: true,
+    }))) return;
+    try {
+      if (block) await api.post('/chat/blocks', { user_id: c.id });
+      else await api.delete(`/chat/blocks/${c.id}`);
+      setChatPrefs(cur => {
+        const blocked = new Set(cur.blocked);
+        if (block) blocked.add(Number(c.id)); else blocked.delete(Number(c.id));
+        return { ...cur, blocked };
+      });
+      toast.success(block ? `You blocked ${contactName(c)}` : `You unblocked ${contactName(c)}`);
+    } catch (e) {
+      toast.error(formatApiError(e, block ? 'Could not block.' : 'Could not unblock.'));
+    }
+  };
+
+  const loadSaved = useCallback(async () => {
+    try {
+      const { data } = await api.get('/chat/saved');
+      setSavedList({ items: data.saved || [], loaded: true });
+    } catch {
+      setSavedList(cur => ({ ...cur, loaded: true }));
+    }
+  }, []);
+  useEffect(() => { if (isAuthenticated) loadSaved(); }, [isAuthenticated, loadSaved]);
+  const savedIds = useMemo(() => new Set(savedList.items.map(s => `${s.message_table}:${s.id}`)), [savedList.items]);
+
   // Background Contacts Fetcher
   const fetchContacts = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const [{ data: u }, { data: n }, { data: g }] = await Promise.all([
+      const [{ data: u }, { data: n }, { data: g }, { data: p }] = await Promise.all([
         api.get('/chat/users'),
         api.get('/chat/npcs'),
-        api.get('/chat/groups')
+        api.get('/chat/groups'),
+        api.get('/chat/prefs').catch(() => ({ data: null })),
       ]);
       setUsers(sortContacts((u.users || []).map(asUserContact)));
       setNpcs(sortContacts((n.npcs || []).map(asNpcContact)));
       setGroups(sortContacts((g.groups || []).map(asGroupContact)));
+      if (p) setChatPrefs({ prefs: p.prefs || {}, blocked: new Set(p.blocked || []), blockedBy: new Set(p.blocked_by || []) });
     } catch (e) {
       if (e?.response?.status === 401) setError('Your session expired. Please log in again.');
     }
@@ -1094,6 +1201,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       if (payload?.type === 'pin' && payload?.messageId !== undefined && payload?.is_pinned !== undefined) {
         setMessages(prev => prev.map(m => m.id === payload.messageId ? { ...m, is_pinned: payload.is_pinned } : m));
       }
+      if (payload?.type === 'saved') { loadSaved(); return; }
       bump();
     };
     socket.on('chat:refresh', handleRefresh);
@@ -1106,6 +1214,25 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       socket.off('connect', bump);
     };
   }, []);
+  // "<name> is typing": back/realtime.js relays chat:typing. Keyed like
+  // threadKey; each hint lasts 4 s unless renewed (the typist sends one ~2.5 s).
+  useEffect(() => {
+    const onTyping = (p) => {
+      if (!p?.id || Number(p.userId) === Number(currentUser?.id)) return;
+      const key = p.kind === 'user' ? `u-${p.id}`
+        : p.kind === 'group' ? `g-${p.id}`
+          : isAdmin ? `n-${p.id}-p-${p.userId}` : `n-${p.id}`;
+      setTyping(cur => ({ ...cur, [key]: { userId: p.userId, until: Date.now() + 4000 } }));
+      setTimeout(() => setTyping(cur => {
+        const now = Date.now();
+        const live = Object.entries(cur).filter(([, t]) => t.until > now);
+        return live.length === Object.keys(cur).length ? cur : Object.fromEntries(live);
+      }), 4100);
+    };
+    socket.on('chat:typing', onTyping);
+    return () => socket.off('chat:typing', onTyping);
+  }, [isAdmin, currentUser?.id]);
+
   // The three contact lists (3 requests) only reorder and badge the OTHER chats:
   // refreshed at most every 6 s, the open thread keeps the 2 s pace above.
   const fetchContactsRef = useRef(fetchContacts);
@@ -1438,8 +1565,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             lastSigRef.current = sig;
             if (hasNewMessages && !isInitialLoad) {
               const inboundNew = msgs.filter(m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m));
-              if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
-                const latest = inboundNew[inboundNew.length - 1];
+              const latestIn = inboundNew[inboundNew.length - 1];
+              const mute = chatPrefsRef.current.prefs[prefKey(selectedContact)]?.muted_until;
+              const silenced = mute && new Date(mute) > new Date()
+                && !(selectedContact.type === 'group' && myNameRef.current && String(latestIn?.body || '').toLowerCase().includes(`@${myNameRef.current.toLowerCase()}`));
+              if (inboundNew.length && !silenced && (document.hidden || !pageVisibleRef.current)) {
+                const latest = latestIn;
                 let title = 'New Message';
                 let icon = '/img/ATT-logo(1).webp';
 
@@ -1888,7 +2019,63 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (send) doSend({ queue: phase !== 'armed' });
   };
 
+  // Tells the other side I'm typing (back/realtime.js), at most every 2.5 s.
+  const lastTypingRef = useRef(0);
+  const emitTyping = (text) => {
+    if (!selectedContact || !canSend || draftMode || !text.trim()) return;
+    if (selectedContact.type === 'npc' && isAdmin && !selectedPlayerId) return;
+    const now = Date.now();
+    if (now - lastTypingRef.current < 2500) return;
+    lastTypingRef.current = now;
+    socket.emit('chat:typing', { kind: selectedContact.type, id: selectedContact.id, user_id: isAdmin ? selectedPlayerId : undefined });
+  };
+
+  // @mentions in groups: '@' offers the other members; picking one writes the
+  // name the server matches (it pings them even through a mute).
+  const mentionMembers = useMemo(() => (selectedContact?.type === 'group'
+    ? headerGroupMembers
+      .filter(m => Number(m.id) !== Number(currentUser?.id) && !m.is_archived)
+      .map(m => ({ id: m.id, name: m.char_name || m.display_name, clan: m.clan }))
+      .filter(m => m.name)
+    : []), [selectedContact, headerGroupMembers, currentUser?.id]);
+  const mentionMatches = mentionQuery === null ? [] : mentionMembers.filter(m => {
+    const name = m.name.toLowerCase();
+    const q = mentionQuery.toLowerCase();
+    return name.startsWith(q) || name.includes(` ${q}`);
+  }).slice(0, 6);
+  const trackMention = (text, caret) => {
+    const m = mentionMembers.length ? /(?:^|\s)@([^@\n]{0,40})$/.exec(text.slice(0, caret)) : null;
+    setMentionQuery(m ? m[1] : null);
+  };
+  const pickMention = (member) => {
+    const ta = textareaRef.current;
+    const caret = ta ? ta.selectionStart : newMessage.length;
+    const before = newMessage.slice(0, caret).replace(/@([^@\n]{0,40})$/, `@${member.name} `);
+    setNewMessage(before + newMessage.slice(caret));
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(before.length, before.length);
+    });
+  };
+  const groupMention = useMemo(() => (selectedContact?.type === 'group'
+    ? mentionPattern(headerGroupMembers.map(m => m.char_name || m.display_name), myName)
+    : null), [selectedContact, headerGroupMembers, myName]);
+
   const handleKeyDown = (e) => {
+    if (mentionMatches.length) {
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        pickMention(mentionMatches[0]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionQuery(null);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && !IS_TOUCH) {
       e.preventDefault();
       if (draftMode) saveDraft();
@@ -2171,6 +2358,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return headerOnline ? 'Online' : 'Offline';
   })();
 
+  // Who is typing in the open chat, if anyone (hints expire after 4 s).
+  const typingNow = typing[threadKey]?.until > Date.now() ? typing[threadKey] : null;
+  const typingName = !typingNow || !selectedContact ? null
+    : selectedContact.type === 'group'
+      ? (() => { const m = headerGroupMembers.find(x => Number(x.id) === Number(typingNow.userId)); return m?.char_name || m?.display_name || 'Someone'; })()
+      : selectedContact.type === 'user' ? contactName(selectedContact)
+        : isAdmin ? (users.find(u => Number(u.id) === Number(typingNow.userId))?.char_name || 'The Kindred')
+          : selectedContact.name;
+
   const headerStanding = (selectedContact?.type === 'user' || selectedContact?.type === 'npc')
     ? { titles: selectedContact.titles || [], court_status: selectedContact.court_status ?? null }
     : { titles: [], court_status: null };
@@ -2261,6 +2457,65 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       toast.error(formatApiError(err, 'Failed to update pin'));
     }
   };
+
+  // Saved messages are my own bookmarks (pins are shared with the whole chat).
+  const isSavedMsg = (item) => savedIds.has(`${reactionTable}:${item.id}`);
+  const toggleSaved = async (item, table = reactionTable) => {
+    if (!table || String(item.id).startsWith('temp_')) return;
+    const saved = !savedIds.has(`${table}:${item.id}`);
+    try {
+      await api.post(`/chat/messages/${item.id}/save`, { table, saved });
+      toast.success(saved ? 'Saved' : 'Removed from saved');
+      loadSaved();
+    } catch (err) {
+      toast.error(formatApiError(err, 'Could not save that message.'));
+    }
+  };
+
+  // Opening a saved message: open its chat (and, for a Storyteller, the
+  // player's thread with that NPC), then jump once its history has loaded.
+  const savedJumpRef = useRef(null);
+  const openSavedMessage = (s) => {
+    const list = s.kind === 'user' ? users : s.kind === 'group' ? groups : npcs;
+    const contact = list.find(c => Number(c.id) === Number(s.chat_id));
+    if (!contact) {
+      toast.error('That chat is no longer in your list.');
+      return;
+    }
+    const playerId = isAdmin && s.kind === 'npc' ? Number(s.player_id) : null;
+    setSavedOpen(false);
+    const key = buildThreadKey(contact, playerId);
+    if (key === threadKey) {
+      // Already open: no reload is coming, so jump now.
+      setTimeout(() => {
+        scrollToMessage(s.id);
+        setFlashMsgId(s.id);
+        setTimeout(() => setFlashMsgId(null), 2000);
+      }, 80);
+      return;
+    }
+    savedJumpRef.current = { key, id: s.id, npcId: s.kind === 'npc' ? contact.id : null, playerId, armedFor: null };
+    if (contactKey(contact) !== chatParam) openChat(contact);
+    else if (playerId) selectAdminTarget(playerId);
+  };
+  useEffect(() => {
+    const jump = savedJumpRef.current;
+    if (!jump) return;
+    if (jump.playerId && selectedContact?.type === 'npc' && selectedContact.id === jump.npcId && selectedPlayerId !== jump.playerId) {
+      selectAdminTarget(jump.playerId);
+      return;
+    }
+    if (threadKey !== jump.key) return;
+    // The first pass after a switch still sees the old chat's messages: skip it.
+    if (jump.armedFor !== threadKey) { jump.armedFor = threadKey; return; }
+    if (!messages.some(m => !String(m.id).startsWith('temp_'))) return;
+    savedJumpRef.current = null;
+    setTimeout(() => {
+      scrollToMessage(jump.id);
+      setFlashMsgId(jump.id);
+      setTimeout(() => setFlashMsgId(null), 2000);
+    }, 80);
+  }, [messages, threadKey, selectedContact, selectedPlayerId]);
 
   const buildThreadKey = (contact, selPlayerId) => {
     if (!contact) return 'none';
@@ -2391,6 +2646,26 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     }, 350);
     return () => { live = false; clearTimeout(t); };
   }, [searchQ, detailsOpen, convParamsKey]);
+
+  // Enter (a phone's Search key) searches at once, drops the keyboard, and
+  // brings the results into view: on a phone they sat hidden under the keyboard.
+  const searchResultsRef = useRef(null);
+  const submitSearch = async (e) => {
+    e.preventDefault();
+    e.currentTarget.querySelector('input')?.blur();
+    const q = searchQ.trim();
+    if (q.length < 2 || !convParams) return;
+    setSearching(true);
+    try {
+      const { data } = await api.get('/chat/search', { params: { ...convParams, q } });
+      setSearchResults(data.results || []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+    setTimeout(() => searchResultsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
+  };
 
   // Opening an NPC as admin jumps straight into its most recently active
   // conversation. Only once per NPC visit, so "Clear" doesn't immediately
@@ -2621,6 +2896,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         label: item.is_pinned ? 'Unpin message' : 'Pin message',
         fn: () => togglePinMessage(item),
       },
+      sent && item.type !== 'system' && {
+        icon: isSavedMsg(item) ? 'bookmark_remove' : 'bookmark_add',
+        label: isSavedMsg(item) ? 'Remove from saved' : 'Save message',
+        fn: () => toggleSaved(item),
+      },
       item.body && { icon: 'content_copy', label: 'Copy text', fn: () => handleCopyMessage(item.body) },
       reactionsByMsgId[item.id]?.length > 0 && { icon: 'groups', label: 'See reactions', fn: () => { setSelectedReactionTab('all'); setViewingReactionsMsg(item); } },
       canEdit && !editingMsgId && { icon: 'edit', label: 'Edit', fn: () => { setEditingMsgId(item.id); setEditBody(item.body); } },
@@ -2735,6 +3015,41 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               <div className={`text-[12px] font-system-code ${headerOnline ? 'text-green-500' : 'text-on-surface-variant/70'}`}>{headerStatus}</div>
             </div>
 
+            {/* Only for me: nobody else in the chat sees these */}
+            <div className={sectionLabel}>Only for you</div>
+            <button type="button" className={row} onClick={() => saveChatPref(c, { pinned: !isPinnedChat(c) })}>
+              <span className="material-symbols-outlined text-[22px] text-on-surface-variant">{isPinnedChat(c) ? 'keep_off' : 'keep'}</span>
+              <span className="flex-1">{isPinnedChat(c) ? 'Unpin from the top' : 'Pin to the top of my list'}</span>
+            </button>
+            <button type="button" className={row} onClick={() => setPanelPicker(v => (v === 'mute' ? null : 'mute'))} aria-expanded={panelPicker === 'mute'}>
+              <span className="material-symbols-outlined text-[22px] text-on-surface-variant">{mutedUntil(c) ? 'notifications_off' : 'notifications'}</span>
+              <span className="flex-1">{mutedUntil(c) ? 'Muted' : 'Mute notifications'}</span>
+              {mutedUntil(c) && <span className="text-[12px] text-on-surface-variant text-right">{mutedLabel(mutedUntil(c))}</span>}
+            </button>
+            {panelPicker === 'mute' && (
+              <div className="px-4 pb-3 flex flex-wrap gap-2">
+                {MUTE_OPTIONS.map(o => (
+                  <button key={o.value} type="button" onClick={() => { saveChatPref(c, { mute: o.value }); setPanelPicker(null); }} className="px-3 min-h-[40px] rounded-full border border-outline-variant text-[13px] text-on-surface hover:border-primary hover:text-primary transition-colors">
+                    {o.label}
+                  </button>
+                ))}
+                {mutedUntil(c) && (
+                  <button type="button" onClick={() => { saveChatPref(c, { mute: null }); setPanelPicker(null); }} className="px-3 min-h-[40px] rounded-full border border-primary text-[13px] text-primary hover:bg-surface-variant/30 transition-colors">
+                    Unmute
+                  </button>
+                )}
+                {c.type === 'group' && (
+                  <p className="w-full text-[11px] text-on-surface-variant/70 m-0">An @mention of you still comes through.</p>
+                )}
+              </div>
+            )}
+            {c.type === 'user' && !isAdminContact(c) && !isTilemachosUser(c) && !c.is_archived && (
+              <button type="button" className={blockedByMe(c) ? row : row.replace('text-on-surface', 'text-error')} onClick={() => setBlocked(c, !blockedByMe(c))}>
+                <span className="material-symbols-outlined text-[22px]">block</span>
+                <span className="flex-1">{blockedByMe(c) ? `Unblock ${contactName(c)}` : `Block ${contactName(c)}`}</span>
+              </button>
+            )}
+
             {/* Customise (shared with everyone in the conversation) */}
             <div className={sectionLabel}>Customise</div>
             <button type="button" className={row} disabled={locked} onClick={() => setPanelPicker(v => (v === 'theme' ? null : 'theme'))} aria-expanded={panelPicker === 'theme'}>
@@ -2783,21 +3098,26 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
             {/* Search */}
             <div className={sectionLabel}>Search in conversation</div>
-            <div className="px-4">
+            <form className="px-4" role="search" onSubmit={submitSearch}>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant/60">search</span>
                 <input
                   type="search"
+                  enterKeyHint="search"
                   value={searchQ}
                   onChange={e => setSearchQ(e.target.value)}
                   disabled={locked}
                   placeholder="Search messages"
+                  aria-label="Search messages in this conversation"
                   className="w-full bg-surface-dim border border-outline-variant/50 rounded-lg pl-10 pr-3 h-11 text-[16px] md:text-[14px] text-on-surface focus:border-primary focus:ring-0"
                 />
               </div>
-            </div>
+            </form>
+            {searchQ.trim().length === 1 && (
+              <div className="px-4 py-2 text-[12px] text-on-surface-variant/70">Type at least 2 letters.</div>
+            )}
             {searchQ.trim().length >= 2 && (
-              <div className="mt-2">
+              <div className="mt-2 scroll-mt-4" ref={searchResultsRef}>
                 {searching && !searchResults && <div className="px-4 py-3 text-[13px] text-on-surface-variant">Searching...</div>}
                 {searchResults && searchResults.length === 0 && <div className="px-4 py-3 text-[13px] text-on-surface-variant">No messages found.</div>}
                 {searchResults?.map(r => (
@@ -3062,6 +3382,211 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     document.body
   );
 
+  // My saved messages from every chat; tapping one opens its chat at it.
+  const savedWhere = (s) => (s.kind === 'npc' && isAdmin && s.player_name ? `${s.chat_name} / ${s.player_name}` : s.chat_name);
+  const renderSavedPanel = () => createPortal(
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setSavedOpen(false)}>
+      <div role="dialog" aria-modal="true" aria-label="Saved messages" className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_0_20px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2 p-4 border-b border-outline-variant/50 shrink-0">
+          <h3 className="text-lg font-headline-md text-on-surface tracking-tight flex items-center gap-2 m-0">
+            <span className="material-symbols-outlined text-primary">bookmarks</span> Saved messages
+          </h3>
+          <button type="button" onClick={() => setSavedOpen(false)} aria-label="Close saved messages" className="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:text-error">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 flex flex-col gap-2">
+          {!savedList.loaded ? (
+            <div className="p-6 text-center text-[13px] text-on-surface-variant">Loading...</div>
+          ) : savedList.items.length === 0 ? (
+            <div className="p-6 text-center text-[13px] text-on-surface-variant">
+              Nothing saved yet. Hold a message (or hover it on a computer) and choose Save. Only you can see what you save.
+            </div>
+          ) : savedList.items.map(s => (
+            <div key={`${s.message_table}-${s.id}`} className="flex items-start gap-2 p-3 rounded-lg bg-surface-container-high/60 border border-outline-variant/40 hover:border-primary/50 transition-colors">
+              <button type="button" onClick={() => openSavedMessage(s)} className="flex-1 min-w-0 text-left">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[11px] text-on-surface-variant font-system-code truncate flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]" aria-hidden="true">{s.kind === 'group' ? 'groups' : s.kind === 'npc' ? 'theater_comedy' : 'person'}</span>
+                    {savedWhere(s)}
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant/60 font-system-code shrink-0">{formatAthensDateTime(s.created_at)}</span>
+                </div>
+                <div className="text-[12px] font-bold text-primary font-system-code truncate">{s.sender_name}</div>
+                {s.body && <div className="text-[13px] text-on-surface line-clamp-3 break-words">{renderMessageBody(s.body)}</div>}
+                {s.attachment_id && (
+                  <div className="mt-1 w-16 h-16 rounded overflow-hidden bg-black/40">
+                    <ChatMedia attachmentId={s.attachment_id} thumb />
+                  </div>
+                )}
+              </button>
+              <button type="button" onClick={() => toggleSaved(s, s.message_table)} title="Remove from saved" aria-label="Remove from saved" className="w-10 h-10 shrink-0 flex items-center justify-center rounded text-on-surface-variant/60 hover:text-error hover:bg-surface-variant/40 transition-colors">
+                <span className="material-symbols-outlined text-[18px]">bookmark_remove</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+
+  /* --- Contact list rows. One renderer per kind, shared by its own section
+     and by PINNED on top (pins live in /chat/prefs, mine only). --- */
+  const rowClass = (isActive, extra = '') => `${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all ${extra}`;
+  const nameClass = (isActive) => (isActive ? 'text-glow-active font-medium text-white' : '');
+  const rowFlags = (c) => (
+    <>
+      {mutedUntil(c) && <span className="material-symbols-outlined text-[14px] text-on-surface-variant/70" title={`Muted ${mutedLabel(mutedUntil(c))}`} aria-label="Muted">notifications_off</span>}
+      {blockedByMe(c) && <span className="material-symbols-outlined text-[14px] text-error/80" title="You blocked them" aria-label="Blocked">block</span>}
+      {blockedMe(c) && <span className="material-symbols-outlined text-[14px] text-error/80" title="They blocked you" aria-label="Blocked you">block</span>}
+    </>
+  );
+
+  const renderGroupRow = (g) => {
+    const isActive = selectedContact?.type === 'group' && selectedContact?.id === g.id;
+    return (
+      <li key={`g-${g.id}`} onClick={() => openChat(g)} className={rowClass(isActive)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+            <GroupIconGlyph icon={g.icon} size={24} />
+          </div>
+          <span className={`${nameClass(isActive)} truncate`}>{g.name}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {rowFlags(g)}
+          <DraftBadge count={draftSummary.countFor('group', g.id)} />
+          <UnreadCount count={g.unread_count} />
+        </div>
+      </li>
+    );
+  };
+
+  const renderActiveUserRow = (u) => {
+    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+    return (
+      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={rowClass(isActive)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50">
+              <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+            </div>
+            <OnlineDot online={isUserOnline(u.id)} />
+          </div>
+          <span className="min-w-0 flex flex-col">
+            <span className={`${nameClass(isActive)} truncate`}>{u.char_name}</span>
+            <StatusLine titles={u.titles} status={u.court_status} className="text-[10px] text-on-surface-variant/70" />
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {rowFlags(u)}
+          <DraftBadge count={draftSummary.countFor('user', u.id)} />
+          {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
+          <UnreadCount count={u.unread_count} />
+        </div>
+      </li>
+    );
+  };
+
+  const renderStaffUserRow = (u) => {
+    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+    const crest = localSymlogo(u.clan);
+    return (
+      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={rowClass(isActive, 'opacity-80')}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
+              <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+            </div>
+            <OnlineDot online={isUserOnline(u.id)} />
+          </div>
+          <span className={`${nameClass(isActive)} truncate min-w-0 flex flex-col`}>
+            <span className="truncate">{u.char_name || u.display_name}</span>
+            {u.char_name && u.char_name !== u.display_name && (
+              <span className="text-[10px] text-on-surface-variant/70 truncate">{u.display_name}</span>
+            )}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {rowFlags(u)}
+          <DraftBadge count={draftSummary.countFor('user', u.id)} />
+          {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
+          <UnreadCount count={u.unread_count} />
+        </div>
+      </li>
+    );
+  };
+
+  const renderPastUserRow = (u) => {
+    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+    return (
+      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={rowClass(isActive, 'opacity-70')}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 shrink-0 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 grayscale">
+            <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+          </div>
+          <span className={`${nameClass(isActive)} truncate`}>{u.char_name || u.display_name}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {rowFlags(u)}
+          {u.is_deceased && <span className="material-symbols-outlined text-[16px]" title="Final Death" aria-label="Final Death">skull</span>}
+          <UnreadCount count={u.unread_count} />
+        </div>
+      </li>
+    );
+  };
+
+  const renderNpcRow = (n) => {
+    const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
+    const crest = localSymlogo(n.clan);
+    return (
+      <li key={`n-${n.id}`} onClick={() => openChat(n)} className={rowClass(isActive)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-8 h-8 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
+              <Avatar npcId={n.id} hasAvatar={n.has_avatar} avatarUrl={n.avatar_url_thumb || n.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+            </div>
+            {!isAdmin && <OnlineDot online={storytellerOnline} />}
+          </div>
+          <span className="min-w-0 flex flex-col">
+            <span className={`${nameClass(isActive)} truncate`}>{n.name}</span>
+            <StatusLine titles={n.titles} status={n.court_status} className="text-[10px] text-on-surface-variant/70" />
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {rowFlags(n)}
+          {!isAdmin && <DraftBadge count={draftSummary.countFor('npc', n.id)} />}
+          <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
+          <UnreadCount count={n.unread_count} />
+        </div>
+      </li>
+    );
+  };
+
+  const renderUserRow = (u) => (isUserActiveContact(u) ? renderActiveUserRow(u)
+    : isAdminOrTilemachos(u) ? renderStaffUserRow(u) : renderPastUserRow(u));
+  const unpinned = (list) => list.filter(c => !isPinnedChat(c));
+  // Pinned chats of every kind, in the order they were pinned (search applies).
+  const pinnedChats = [...filteredGroups, ...filteredUsers, ...filteredNpcs]
+    .filter(isPinnedChat)
+    .sort((a, b) => new Date(prefOf(a).pinned_at) - new Date(prefOf(b).pinned_at));
+  const renderAnyRow = (c) => (c.type === 'group' ? renderGroupRow(c) : c.type === 'npc' ? renderNpcRow(c) : renderUserRow(c));
+
+  // Enter in "Search network" opens the top match, in the order the list shows.
+  const openTopMatch = (e) => {
+    e.preventDefault();
+    if (!filter.trim()) return;
+    const top = [...pinnedChats, ...unpinned(filteredGroups), ...unpinned(usersWithChar),
+      ...unpinned(usersAdminAndTilemachos), ...unpinned(usersPast), ...unpinned(filteredNpcs)][0];
+    if (!top) {
+      toast.error('Nobody by that name on SchreckNet.');
+      return;
+    }
+    e.currentTarget.querySelector('input')?.blur();
+    setFilter('');
+    openChat(top);
+  };
+
   return (
     <div
       className={`${styles.commsContainer} ${selectedContact ? styles.mobileChatActive : ''}`}
@@ -3071,6 +3596,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       {creatingGroup && renderCreateGroupModalTailwind()}
       {managingGroup && renderManageGroupModalTailwind()}
       {confirmState && renderConfirmDialog()}
+      {savedOpen && renderSavedPanel()}
 
       {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
       <motion.aside
@@ -3087,10 +3613,24 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 ? <span className="material-symbols-outlined text-primary text-[22px]">shield_person</span>
                 : <Avatar userId={currentUser?.id} hasAvatar={currentUser?.has_avatar} avatarUrl={currentUser?.avatar_url_thumb || currentUser?.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(myChar?.clan) || '/img/ATT-logo(1).webp'} />}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-on-surface-variant text-[10px] uppercase tracking-widest opacity-70">Writing as</div>
               <div className="font-bold text-on-surface text-[14px] truncate">{isAdmin ? 'Storyteller' : (myChar?.name || currentUser?.display_name)}</div>
             </div>
+            <button
+              type="button"
+              onClick={() => { setSavedOpen(true); loadSaved(); }}
+              title="Saved messages (only you see them)"
+              aria-label={`Saved messages${savedList.items.length ? `, ${savedList.items.length}` : ''}`}
+              className="relative w-11 h-11 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-primary hover:bg-surface-variant/20 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[22px]">bookmarks</span>
+              {savedList.items.length > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-surface-container-highest border border-outline-variant text-[9px] font-bold text-on-surface flex items-center justify-center">
+                  {savedList.items.length}
+                </span>
+              )}
+            </button>
           </div>
           {isCharActive && (
             <button onClick={() => setCreatingGroup(true)} className="w-full py-2 bg-transparent border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary hover:shadow-[0_0_8px_rgba(140,27,27,0.2)] transition-all rounded text-[12px] font-bold tracking-wider flex items-center justify-center gap-2 group">
@@ -3099,46 +3639,41 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             </button>
           )}
 
-          <div className="mt-4 relative">
+          <form className="mt-4 relative" role="search" onSubmit={openTopMatch}>
             <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[16px]">search</span>
             <input
-              type="text"
+              type="search"
+              enterKeyHint="go"
+              aria-label="Search chats"
               className="w-full bg-surface-dim border border-outline-variant/50 rounded py-2 md:py-1.5 pl-8 pr-2 text-[16px] md:text-[12px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
               placeholder="Search network..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
-          </div>
+          </form>
         </div>
 
         {/* Scrollable Nav */}
         <div className={`${styles.usersScroll} custom-scrollbar`}>
 
+          {/* Pinned (mine only, any kind of chat) */}
+          {pinnedChats.length > 0 && (
+            <div className="mb-6">
+              <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]" aria-hidden="true">keep</span>
+                PINNED
+              </div>
+              <ul className="flex flex-col">{pinnedChats.map(renderAnyRow)}</ul>
+            </div>
+          )}
+
           {/* Groups */}
-          {filteredGroups.length > 0 && (
+          {unpinned(filteredGroups).length > 0 && (
             <div className="mb-6">
               <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
                 GROUPS
               </div>
-              <ul className="flex flex-col">
-                {filteredGroups.map(g => {
-                  const isActive = selectedContact?.type === 'group' && selectedContact?.id === g.id;
-                  return (
-                    <li key={`g-${g.id}`} onClick={() => openChat(g)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
-                          <GroupIconGlyph icon={g.icon} size={24} />
-                        </div>
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <DraftBadge count={draftSummary.countFor('group', g.id)} />
-                        <UnreadCount count={g.unread_count} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <ul className="flex flex-col">{unpinned(filteredGroups).map(renderGroupRow)}</ul>
             </div>
           )}
 
@@ -3147,32 +3682,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
               CONTACTS
             </div>
-            <ul className="flex flex-col">
-              {usersWithChar.map(u => {
-                const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                return (
-                  <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                          <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
-                        </div>
-                        <OnlineDot online={isUserOnline(u.id)} />
-                      </div>
-                      <span className="min-w-0 flex flex-col">
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name}</span>
-                        <StatusLine titles={u.titles} status={u.court_status} className="text-[10px] text-on-surface-variant/70" />
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <DraftBadge count={draftSummary.countFor('user', u.id)} />
-                      {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
-                      <UnreadCount count={u.unread_count} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <ul className="flex flex-col">{unpinned(usersWithChar).map(renderActiveUserRow)}</ul>
           </div>
 
             {/* Admins & Tilemachos Toggle */ }
@@ -3185,38 +3695,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   </div>
               </button>
               {adminTilemachosOpen && (
-            <ul className="flex flex-col">
-                {
-                  usersAdminAndTilemachos.map(u => {
-                    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                    const crest = localSymlogo(u.clan);
-                    return (
-                      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative shrink-0">
-                            <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
-                              <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
-                            </div>
-                            <OnlineDot online={isUserOnline(u.id)} />
-                          </div>
-                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate min-w-0 flex flex-col`}>
-                            <span className="truncate">{u.char_name || u.display_name}</span>
-                            {u.char_name && u.char_name !== u.display_name && (
-                              <span className="text-[10px] text-on-surface-variant/70 truncate">{u.display_name}</span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <DraftBadge count={draftSummary.countFor('user', u.id)} />
-                          {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
-                          <UnreadCount count={u.unread_count} />
-                        </div>
-                      </li>
-                    );
-                  })
-                }
-                </ul>
-          )}
+                <ul className="flex flex-col">{unpinned(usersAdminAndTilemachos).map(renderStaffUserRow)}</ul>
+              )}
         </div>
           )}
 
@@ -3228,25 +3708,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               PAST CONTACTS ({usersPast.length})
             </button>
             {pastOpen && (
-              <ul className="flex flex-col">
-                {usersPast.map(u => {
-                  const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                  return (
-                    <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-70`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 shrink-0 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 grayscale">
-                          <Avatar userId={u.id} hasAvatar={u.has_avatar} avatarUrl={u.avatar_url_thumb || u.avatar_url} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
-                        </div>
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name || u.display_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {u.is_deceased && <span className="material-symbols-outlined text-[16px]" title="Final Death" aria-label="Final Death">skull</span>}
-                        <UnreadCount count={u.unread_count} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <ul className="flex flex-col">{unpinned(usersPast).map(renderPastUserRow)}</ul>
             )}
           </div>
         )}
@@ -3256,33 +3718,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
             ASSETS (NPCs)
           </div>
-          <ul className="flex flex-col">
-            {filteredNpcs.map(n => {
-              const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
-              const crest = localSymlogo(n.clan);
-              return (
-                <li key={`n-${n.id}`} onClick={() => openChat(n)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                        <Avatar npcId={n.id} hasAvatar={n.has_avatar} avatarUrl={n.avatar_url_thumb || n.avatar_url} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
-                      </div>
-                      {!isAdmin && <OnlineDot online={storytellerOnline} />}
-                    </div>
-                    <span className="min-w-0 flex flex-col">
-                      <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{n.name}</span>
-                      <StatusLine titles={n.titles} status={n.court_status} className="text-[10px] text-on-surface-variant/70" />
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {!isAdmin && <DraftBadge count={draftSummary.countFor('npc', n.id)} />}
-                    <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
-                    <UnreadCount count={n.unread_count} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="flex flex-col">{unpinned(filteredNpcs).map(renderNpcRow)}</ul>
         </div>
 
     </div>
@@ -3649,7 +4085,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           <ReactionGlyph value={item.body} size={EMOJI_PX[item.emoji_size]} />
                         </span>
                       ) : (
-                        <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>
+                        <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body, groupMention)}</p>
                       ))}
                     </div>
                   )}
@@ -3751,6 +4187,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           {item.is_pinned ? 'Unpin' : 'Pin'}
                         </button>
                       )}
+                      {!String(item.id).startsWith('temp_') && item.type !== 'system' && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSaved(item)}
+                          title={isSavedMsg(item) ? 'Remove from saved' : 'Save message (only you see it)'}
+                          className={`text-[10px] transition-colors flex items-center gap-0.5 ${isSavedMsg(item) ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
+                        >
+                          <span className="material-symbols-outlined text-[11px]">{isSavedMsg(item) ? 'bookmark_remove' : 'bookmark_add'}</span>
+                          {isSavedMsg(item) ? 'Saved' : 'Save'}
+                        </button>
+                      )}
                       {!String(item.id).startsWith('temp_') && (
                         <button
                           type="button"
@@ -3843,6 +4290,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       <span className="material-symbols-outlined text-[18px]">{item.is_pinned ? 'keep_off' : 'push_pin'}</span>
                     </button>
                   )}
+                  {!String(item.id).startsWith('temp_') && item.type !== 'system' && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSaved(item)}
+                      title={isSavedMsg(item) ? 'Remove from saved' : 'Save message (only you see it)'}
+                      aria-label={isSavedMsg(item) ? 'Remove this message from saved' : 'Save this message'}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isSavedMsg(item) ? 'text-primary' : 'text-on-surface-variant hover:text-primary hover:bg-surface-variant/40'}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{isSavedMsg(item) ? 'bookmark_remove' : 'bookmark_add'}</span>
+                    </button>
+                  )}
                   {item.body && (
                     <button
                       type="button"
@@ -3877,8 +4335,23 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         )}
 
           {/* Bottom Input Area. A retired, out of play, or administrative contact thread is history only. */ }
-            {(selectedContact?.type === 'user' && (selectedContact?.is_archived || selectedContact?.is_deceased || selectedContact?.is_left || selectedContact?.is_missing || selectedContact?.is_active === false || isTilemachosUser(selectedContact) || (!isAdmin && isAdminContact(selectedContact)))) ? (
+            {(selectedContact?.type === 'user' && (blockedByMe(selectedContact) || blockedMe(selectedContact) || selectedContact?.is_archived || selectedContact?.is_deceased || selectedContact?.is_left || selectedContact?.is_missing || selectedContact?.is_active === false || isTilemachosUser(selectedContact) || (!isAdmin && isAdminContact(selectedContact)))) ? (
           <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            {blockedByMe(selectedContact) || blockedMe(selectedContact) ? (
+              <p className="max-w-4xl mx-auto w-full flex flex-wrap items-center gap-2 text-xs font-system-code text-error/90">
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">block</span>
+                {blockedByMe(selectedContact) ? (
+                  <>
+                    You blocked {contactName(selectedContact)}. Neither of you can write until you unblock them.
+                    <button type="button" onClick={() => setBlocked(selectedContact, false)} className="ml-1 px-2 py-1 rounded border border-outline-variant text-on-surface hover:border-primary hover:text-primary transition-colors">
+                      Unblock
+                    </button>
+                  </>
+                ) : (
+                  <>{contactName(selectedContact)} has blocked you. Your old messages remain, but you cannot write to them.</>
+                )}
+              </p>
+            ) : (
             <p className="max-w-4xl mx-auto w-full flex items-center gap-2 text-xs font-system-code text-on-surface-variant/70">
               <span className="material-symbols-outlined text-[18px]" aria-hidden="true">lock</span>
               {selectedContact.char_name || selectedContact.display_name}
@@ -3890,9 +4363,21 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     ? ' is an administrative channel and direct messaging is disabled. Only previous messages remain.'
                     : ' has gone dark and is no longer on SchreckNet. Only their words remain.'}
             </p>
+            )}
           </div>
         ) : (
           <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
+            {/* "<name> is typing", floating just above the composer */}
+            <div className="absolute bottom-full left-0 right-0 pointer-events-none px-3 pb-1" aria-live="polite">
+              {typingName && (
+                <div className="max-w-4xl mx-auto w-full">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full chat-overlay-surface border border-outline-variant/40 text-[11px] font-system-code italic text-on-surface-variant">
+                    {typingName} is typing
+                    <span aria-hidden="true" className="inline-flex items-end"><span className="chat-typing-dot" /><span className="chat-typing-dot" /><span className="chat-typing-dot" /></span>
+                  </span>
+                </div>
+              )}
+            </div>
             {/* Emoji Picker */}
             {showEmojiPicker && (
               <>
@@ -3920,6 +4405,28 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             )}
 
             <div className="max-w-4xl mx-auto w-full relative flex flex-col bg-surface-container-lowest border border-outline-variant rounded-md focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
+              {/* @mention: the group's other members matching what follows '@' */}
+              {mentionMatches.length > 0 && (
+                <ul role="listbox" aria-label="Mention a member" className="absolute bottom-full left-0 mb-2 w-full max-w-xs chat-overlay-surface border border-outline-variant rounded-lg shadow-[0_0_16px_rgba(0,0,0,0.6)] overflow-hidden z-50 py-1">
+                  {mentionMatches.map((m, i) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={i === 0}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => pickMention(m)}
+                        className={`w-full flex items-center gap-2.5 px-3 min-h-[44px] text-left text-[14px] text-on-surface hover:bg-surface-variant/40 ${i === 0 ? 'bg-surface-variant/20' : ''}`}
+                      >
+                        {localSymlogo(m.clan)
+                          ? <img src={localSymlogo(m.clan)} alt="" className="w-5 h-5 shrink-0" style={{ filter: 'brightness(0) invert(1)' }} />
+                          : <span className="material-symbols-outlined text-[18px] text-on-surface-variant shrink-0">alternate_email</span>}
+                        <span className="truncate">{m.name}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {replyTo && (
                 <div className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-primary">
                   <span className="material-symbols-outlined text-[18px] text-primary shrink-0">reply</span>
@@ -4021,7 +4528,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   <textarea
                     ref={textareaRef}
                     value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
+                    onChange={e => {
+                      setNewMessage(e.target.value);
+                      emitTyping(e.target.value);
+                      trackMention(e.target.value, e.target.selectionStart);
+                    }}
                     onKeyDown={handleKeyDown}
                     enterKeyHint={IS_TOUCH ? 'enter' : 'send'}
                     placeholder={showQueueOption ? "SchreckNet offline : send queues it, hold send to deliver now" : draftMode ? (nextOpening ? `SchreckNet offline : write a draft, send it after ${nextOpening.day} ${nextOpening.time}` : 'SchreckNet offline : write a draft, send it later') : !canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}

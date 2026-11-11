@@ -6,7 +6,8 @@
 // scattered through the markup (which is what broke the old page on phones).
 import React from 'react';
 import styles from '../../styles/Coteries.module.css';
-import { MAX_DOTS } from '../../data/coterieRules';
+import { MAX_DOTS, MIN_MEMBERS } from '../../data/coterieRules';
+import { formatAthensDate } from '../../utils/dateFormatter';
 
 export function Card({ title, subtitle, actions, children, tone, className, id }) {
   return (
@@ -122,6 +123,30 @@ export function NumberInput({ label, value, onChange, min = 0, max = 99, hint })
 
 export function Muted({ children, className, tone }) {
   return <p className={`${styles.muted} ${className || ''}`} data-tone={tone}>{children}</p>;
+}
+
+// Below the member floor (back/services/coterieLifecycle.js): dormant with a
+// deadline, then dissolved. Renders nothing for an active coterie.
+export function StatusNotice({ coterie }) {
+  if (coterie?.status === 'dormant') {
+    return (
+      <Muted tone="warn">
+        <i className="fa-solid fa-hourglass-half" aria-hidden="true" />{' '}
+        Dormant: fewer than {MIN_MEMBERS} members. Bring it back to {MIN_MEMBERS} by{' '}
+        <strong>{coterie.dissolve_at ? formatAthensDate(coterie.dissolve_at) : 'the deadline'}</strong>, or it dissolves.
+        Its merits keep working, but purchases, contributions and edits to the coterie wait until then.
+      </Muted>
+    );
+  }
+  if (coterie?.status === 'dissolved') {
+    return (
+      <Muted tone="warn">
+        <i className="fa-solid fa-ban" aria-hidden="true" />{' '}
+        Dissolved{coterie.dissolve_at ? ` on ${formatAthensDate(coterie.dissolve_at)}` : ''}. Kept for the record; players no longer see it.
+      </Muted>
+    );
+  }
+  return null;
 }
 
 export function Empty({ children }) {

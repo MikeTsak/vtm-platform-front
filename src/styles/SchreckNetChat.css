@@ -128,3 +128,34 @@
     linear-gradient(var(--theme-surface-container, #201f1f), var(--theme-surface-container, #201f1f)),
     var(--bg-color, #0d0d0f);
 }
+
+/* @mentions in group messages (ChatSystem mentionPattern). Drawn from the
+   bubble's own text colour, so they read on every theme and bubble colour. */
+.chat-mention {
+  font-weight: 700;
+}
+.chat-mention-me {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* "<name> is typing": three dots, one after another. */
+.chat-typing-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: chat-typing-dot 1.2s infinite ease-in-out;
+}
+.chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chat-typing-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing-dot { animation: none; opacity: 0.6; }
+}

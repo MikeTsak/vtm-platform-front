@@ -22,7 +22,7 @@ export const PUSH_GROUPS = [
     items: [
       { key: 'downtimes', label: 'Downtimes', hint: 'Resolutions released and Storyteller replies to your actions.' },
       { key: 'court', label: 'Court and domains', hint: 'Domain claims, Blood Hunts, boons, and feeding incidents in your domain.' },
-      { key: 'character', label: 'Your character', hint: 'Discipline access, ghoul upkeep and hunt evidence.' },
+      { key: 'character', label: 'Your character', hint: 'Discipline access, ghoul upkeep, hunt evidence, and your coterie falling dormant or dissolving.' },
     ],
   },
   {
