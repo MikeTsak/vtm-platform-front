@@ -17,6 +17,26 @@ const BOON_STATUSES = ['owed', 'paid', 'excused'];
 const LEVEL_LABELS = { trivial: 'Trivial', minor: 'Minor', major: 'Major', life: 'Life' };
 const STATUS_LABELS = { owed: 'Active', paid: 'Paid', excused: 'Excused' };
 
+// Boon parties that are bodies, not people (entity types from /boons/entities).
+// They show an icon where a person shows a portrait.
+const PARTY_KINDS = {
+  institution: { label: 'Institution', group: 'Institutions', icon: 'account_balance' },
+  coterie:     { label: 'Coterie',     group: 'Coteries',     icon: 'groups' },
+  clan:        { label: 'Clan',        group: 'Clans',        icon: 'shield' },
+};
+const entityGroup = (type) => PARTY_KINDS[type]?.group || (type === 'npc' ? 'NPCs' : 'Kindred');
+
+// Group items into [label, items] pairs, keeping first-seen order.
+const groupInOrder = (items, labelOf) => {
+  const groups = new Map();
+  items.forEach(it => {
+    const label = labelOf(it);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(it);
+  });
+  return [...groups];
+};
+
 export const BOON_DEFINITIONS = [
   {
     level: 'trivial',
@@ -364,6 +384,7 @@ export default function Boons() {
   
   const [showForm, setShowForm]       = useState(false);
   const [editTarget, setEditTarget]   = useState(null);
+  const [transferTarget, setTransferTarget] = useState(null);
   const [boonPrintMode, setBoonPrintMode] = useState(null);
 
   const handlePrintRegistry = () => {
@@ -528,6 +549,20 @@ export default function Boons() {
   // Helper for normalizing Kindred / NPC names
   const cleanPersonName = (raw) => (raw || '').split(' (')[0].trim();
 
+  // clean lower-case name -> party kind, for bodies (court, coteries, clans)
+  const partyKinds = useMemo(() => new Map(
+    entities.filter(e => PARTY_KINDS[e.type]).map(e => [cleanPersonName(e.name).toLowerCase(), e.type])
+  ), [entities]);
+
+  const renderPartyAvatar = (id, name) => {
+    const kind = PARTY_KINDS[partyKinds.get(cleanPersonName(name).toLowerCase())];
+    if (kind) return <span className="material-symbols-outlined text-[20px] text-primary" aria-hidden="true">{kind.icon}</span>;
+    const props = getAvatarProps(id, name);
+    return props
+      ? <Avatar {...props} size="100%" style={{ width: '100%', height: '100%' }} />
+      : getInitials(cleanPersonName(name));
+  };
+
   // Full Ledger Entity List with calculated statistics per person
   const allPersonStats = useMemo(() => {
     const map = new Map();
@@ -547,7 +582,8 @@ export default function Boons() {
         key: clean.toLowerCase(),
         name: ent.name,
         cleanName: clean,
-        type: ent.type === 'npc' ? 'NPC' : 'Player',
+        type: ent.type === 'npc' ? 'NPC' : (PARTY_KINDS[ent.type]?.label || 'Player'),
+        group: entityGroup(ent.type),
         clan: clanOrRole,
         entityId: ent.id,
         debtsOwed: 0,
@@ -733,23 +769,23 @@ export default function Boons() {
   }, [user, myCharacter, allPersonStats]);
 
   // Entity list for dropdown selector
+  // [optgroup label, parties] in a fixed order; empty groups are dropped.
   const entitySelectGroups = useMemo(() => {
-    const players = [];
-    const npcs = [];
-    const others = [];
-
-    allPersonStats.forEach(p => {
-      if (p.type === 'Player') players.push(p);
-      else if (p.type === 'NPC') npcs.push(p);
-      else others.push(p);
-    });
-
-    players.sort((a, b) => a.cleanName.localeCompare(b.cleanName));
-    npcs.sort((a, b) => a.cleanName.localeCompare(b.cleanName));
-    others.sort((a, b) => a.cleanName.localeCompare(b.cleanName));
-
-    return { players, npcs, others };
+    const order = ['Institutions', 'Coteries', 'Clans', 'Kindred', 'NPCs', 'Other Registered'];
+    const sorted = [...allPersonStats].sort((a, b) => a.cleanName.localeCompare(b.cleanName));
+    const groups = new Map(groupInOrder(sorted, p => p.group || 'Other Registered'));
+    return order.filter(label => groups.has(label)).map(label => [label, groups.get(label)]);
   }, [allPersonStats]);
+
+  const entityFilterOptions = entitySelectGroups.map(([label, parties]) => (
+    <optgroup key={label} label={label}>
+      {parties.map(p => (
+        <option key={p.id} value={p.cleanName}>
+          {p.cleanName}{label === 'Kindred' || label === 'NPCs' ? ` (${p.clan})` : ''}
+        </option>
+      ))}
+    </optgroup>
+  ));
 
   // Processed Boons with all filters applied
   const processedBoons = useMemo(() => {
@@ -787,6 +823,8 @@ export default function Boons() {
         const myNames = [];
         if (user.display_name)  myNames.push(cleanPersonName(user.display_name).toLowerCase());
         if (myCharacter?.name)  myNames.push(cleanPersonName(myCharacter.name).toLowerCase());
+        // A boon owed by or to my coterie is mine too.
+        entities.filter(e => e.mine).forEach(e => myNames.push(cleanPersonName(e.name).toLowerCase()));
         result = result.filter(b => {
           const from = cleanPersonName(b.from_name).toLowerCase();
           const to   = cleanPersonName(b.to_name).toLowerCase();
@@ -902,6 +940,14 @@ export default function Boons() {
         </div>
       )}
 
+      {transferTarget && canManage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setTransferTarget(null)}>
+          <div className="bg-surface-container-high gothic-etched-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <BoonTransferForm entities={entities} boon={transferTarget} onDone={() => setTransferTarget(null)} onCancel={() => setTransferTarget(null)} />
+          </div>
+        </div>
+      )}
+
       {/* ── Boon Print Sheet Modal ── */}
       {boonPrintMode && (
         <BoonPrintModal
@@ -964,34 +1010,14 @@ export default function Boons() {
 
           {/* Mobile Specific Player or NPC Selector */}
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">Kindred or NPC Filter</label>
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">Party Filter</label>
             <select
               className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2 text-xs text-on-surface outline-none"
               value={selectedEntity}
               onChange={e => setSelectedEntity(e.target.value)}
             >
-              <option value="">All Kindred and NPCs</option>
-              {entitySelectGroups.players.length > 0 && (
-                <optgroup label="Kindred Players">
-                  {entitySelectGroups.players.map(p => (
-                    <option key={p.id} value={p.cleanName}>{p.cleanName} ({p.clan})</option>
-                  ))}
-                </optgroup>
-              )}
-              {entitySelectGroups.npcs.length > 0 && (
-                <optgroup label="NPCs">
-                  {entitySelectGroups.npcs.map(p => (
-                    <option key={p.id} value={p.cleanName}>{p.cleanName} (NPC)</option>
-                  ))}
-                </optgroup>
-              )}
-              {entitySelectGroups.others.length > 0 && (
-                <optgroup label="Other Registered">
-                  {entitySelectGroups.others.map(p => (
-                    <option key={p.id} value={p.cleanName}>{p.cleanName}</option>
-                  ))}
-                </optgroup>
-              )}
+              <option value="">All parties</option>
+              {entityFilterOptions}
             </select>
           </div>
 
@@ -1329,15 +1355,13 @@ export default function Boons() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/10 pb-3 mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-xs font-bold shrink-0 bg-surface-container-highest overflow-hidden">
-                        {getAvatarProps(inspectedPerson.entityId, inspectedPerson.name) ? (
-                          <Avatar {...getAvatarProps(inspectedPerson.entityId, inspectedPerson.name)} size="100%" style={{ width: '100%', height: '100%' }} />
-                        ) : getInitials(inspectedPerson.cleanName)}
+                        {renderPartyAvatar(inspectedPerson.entityId, inspectedPerson.name)}
                       </div>
                       <div>
                         <h4 className="text-[16px] font-bold text-on-surface flex items-center gap-2">
                           {inspectedPerson.cleanName}
                           <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-normal">
-                            {inspectedPerson.type}: {inspectedPerson.clan}
+                            {inspectedPerson.type === inspectedPerson.clan ? inspectedPerson.type : `${inspectedPerson.type}: ${inspectedPerson.clan}`}
                           </span>
                         </h4>
                         <p className="text-[11px] text-on-surface-variant">
@@ -1426,28 +1450,8 @@ export default function Boons() {
                   value={selectedEntity}
                   onChange={e => setSelectedEntity(e.target.value)}
                 >
-                  <option value="">All Kindred and NPCs</option>
-                  {entitySelectGroups.players.length > 0 && (
-                    <optgroup label="Kindred Players">
-                      {entitySelectGroups.players.map(p => (
-                        <option key={p.id} value={p.cleanName}>{p.cleanName} ({p.clan})</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {entitySelectGroups.npcs.length > 0 && (
-                    <optgroup label="NPCs">
-                      {entitySelectGroups.npcs.map(p => (
-                        <option key={p.id} value={p.cleanName}>{p.cleanName} (NPC)</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {entitySelectGroups.others.length > 0 && (
-                    <optgroup label="Other Registered">
-                      {entitySelectGroups.others.map(p => (
-                        <option key={p.id} value={p.cleanName}>{p.cleanName}</option>
-                      ))}
-                    </optgroup>
-                  )}
+                  <option value="">All parties</option>
+                  {entityFilterOptions}
                 </select>
 
                 {/* Paid Boons Toggle (checked by default) */}
@@ -1530,6 +1534,9 @@ export default function Boons() {
             {processedBoons.map(boon => {
               const statusStr = String(boon.status).toLowerCase();
               const settled = statusStr === 'paid' || statusStr === 'excused';
+              // Open, but a side met Final Death: it hangs until the court passes it on or settles it.
+              const deadSides = [boon.from_dead && boon.from_name, boon.to_dead && boon.to_name].filter(Boolean);
+              const orphaned = !settled && deadSides.length > 0;
               const levelStyle = getBoonColorClasses(String(boon.level).toLowerCase());
               
               const borderClass = `border-l-4 ${levelStyle.bgSolid.replace('bg-', 'border-')}`;
@@ -1545,9 +1552,9 @@ export default function Boons() {
                   viewport={{ once: false, amount: 0.1 }}
                 >
                   
-                  {settled && (
+                  {(settled || orphaned) && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                      <span className="paid-stamp text-5xl font-black">{boon.status}</span>
+                      <span className="paid-stamp text-5xl font-black">{settled ? boon.status : 'Orphaned'}</span>
                     </div>
                   )}
                   
@@ -1566,6 +1573,9 @@ export default function Boons() {
                       </button>
                       {canManage && (
                         <div className="flex gap-2 mr-2 border-r border-outline-variant/20 pr-2">
+                          {!settled && (
+                            <button type="button" onClick={() => setTransferTarget(boon)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary transition-colors" title="Transfer boon" aria-label="Transfer boon">swap_horiz</button>
+                          )}
                           <button onClick={() => openEdit(boon)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary transition-colors">edit</button>
                           <button onClick={() => handleDelete(boon.id)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-error transition-colors" disabled={deleteMutation.isPending}>delete</button>
                         </div>
@@ -1576,9 +1586,7 @@ export default function Boons() {
                   
                   <div className="flex items-center gap-3 relative z-10">
                     <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest overflow-hidden`}>
-                      {getAvatarProps(boon.from_id, boon.from_name) ? (
-                        <Avatar {...getAvatarProps(boon.from_id, boon.from_name)} size="100%" style={{ width: '100%', height: '100%' }} />
-                      ) : getInitials(boon.from_name)}
+                      {renderPartyAvatar(boon.from_id, boon.from_name)}
                     </div>
                     
                     <div className="flex-1">
@@ -1615,15 +1623,21 @@ export default function Boons() {
                     </div>
                     
                     <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest overflow-hidden`}>
-                      {getAvatarProps(boon.to_id, boon.to_name) ? (
-                        <Avatar {...getAvatarProps(boon.to_id, boon.to_name)} size="100%" style={{ width: '100%', height: '100%' }} />
-                      ) : getInitials(boon.to_name)}
+                      {renderPartyAvatar(boon.to_id, boon.to_name)}
                     </div>
                   </div>
                   
                   <div className="mt-3 pt-3 border-t border-outline-variant/10 flex justify-between items-start md:items-center flex-col md:flex-row gap-2 relative z-10">
-                    <div className="flex items-center gap-2">
-                      {!settled ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {orphaned ? (
+                        <>
+                          <span className="material-symbols-outlined text-[16px] text-on-surface-variant" aria-hidden="true">skull</span>
+                          <span className="text-[12px] font-bold text-on-surface-variant uppercase">Orphaned</span>
+                          <span className="text-[11px] text-on-surface-variant italic">
+                            Final Death of {deadSides.join(' and ')}. Neither paid nor passed on.
+                          </span>
+                        </>
+                      ) : !settled ? (
                         <>
                           <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
                           <span className="text-[12px] font-bold text-on-surface uppercase">Active</span>
@@ -1784,16 +1798,62 @@ export default function Boons() {
 }
 
 /* ══════════════════════════════════════════════
+   PARTY PICKER (one side of a boon)
+══════════════════════════════════════════════ */
+const FIELD_CLASS = 'w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface';
+
+// Only the name is saved; the key just drives the select. A stored name that
+// matches a known party reopens as that party, anything else as manual entry.
+const partyFor = (entities, name) => {
+  const clean = (name || '').trim();
+  const e = clean && entities.find(x => x.name.split(' (')[0].trim() === clean);
+  return { key: e ? `${e.type}:${clean}` : 'manual', name: name || '' };
+};
+
+function PartyPicker({ entities, party, onChange, disabled }) {
+  const options = useMemo(() => entities.map(e => {
+    const name = e.name.split(' (')[0].trim();
+    // Bodies sit under a group label that already says what they are.
+    return { key: `${e.type}:${name}`, name, label: PARTY_KINDS[e.type] ? name : e.name, group: entityGroup(e.type) };
+  }), [entities]);
+
+  const pick = (key) => {
+    const o = options.find(x => x.key === key);
+    onChange(o ? { key: o.key, name: o.name } : { key: 'manual', name: party.name });
+  };
+
+  return (
+    <>
+      <select className={FIELD_CLASS} value={party.key} onChange={e => pick(e.target.value)} disabled={disabled}>
+        <option value="manual">NPC or Manual Entry</option>
+        {groupInOrder(options, o => o.group).map(([label, opts]) => (
+          <optgroup key={label} label={label}>
+            {opts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      {party.key === 'manual' && (
+        <input className={`${FIELD_CLASS} mt-2`} type="text" placeholder="Enter custom name…" value={party.name}
+          onChange={e => onChange({ key: 'manual', name: e.target.value })} disabled={disabled} />
+      )}
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════
    BOON FORM
 ══════════════════════════════════════════════ */
 export function BoonForm({ entities, boon, onSave, onCancel }) {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    from_key: 'npc', from_id: '', from_name: '',
-    to_key:   'npc', to_id:   '', to_name: '',
-    level: 'trivial', status: 'owed', description: '',
-  });
-  
+  // Mounted fresh for each record, so the props seed the form once.
+  const [formData, setFormData] = useState(() => ({
+    from: partyFor(entities, boon?.from_name),
+    to: partyFor(entities, boon?.to_name),
+    level: String(boon?.level || 'trivial').toLowerCase(),
+    status: String(boon?.status || 'owed').toLowerCase(),
+    description: boon?.description || '',
+  }));
+
   const saveMutation = useMutation({
     mutationFn: async (payload) => {
       if (boon) {
@@ -1812,62 +1872,21 @@ export function BoonForm({ entities, boon, onSave, onCancel }) {
     }
   });
 
-  const entityOptions = useMemo(() => [
-    { id: 'npc', name: 'NPC or Manual Entry' },
-    ...entities.map(e => ({ id: `${e.type}-${e.id}`, name: e.name })),
-  ], [entities]);
-
-  useEffect(() => {
-    const deriveKey = (id, name) => {
-      if (!id) return 'npc';
-      const byId = entities.find(e => String(e.id) === String(id));
-      if (byId) return `${byId.type}-${byId.id}`;
-      const base  = (name || '').split(' (')[0].trim();
-      const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === base);
-      return byName ? `${byName.type}-${byName.id}` : 'npc';
-    };
-
-    if (boon) {
-      setFormData({
-        from_key: deriveKey(boon.from_id, boon.from_name), from_id: boon.from_id || '', from_name: boon.from_name || '',
-        to_key:   deriveKey(boon.to_id,   boon.to_name),   to_id:   boon.to_id   || '', to_name:   boon.to_name   || '',
-        level: String(boon.level || 'trivial').toLowerCase(), status: String(boon.status || 'owed').toLowerCase(), description: boon.description || '',
-      });
-    } else {
-      setFormData({ from_key: 'npc', from_id: '', from_name: '', to_key: 'npc', to_id: '', to_name: '', level: 'trivial', status: 'owed', description: '' });
-    }
-  }, [boon, entities]);
-
-  const handleEntityChange = (e, prefix) => {
-    const val = e.target.value;
-    const opt = entityOptions.find(o => o.id === val);
-    if (!opt) return;
-    if (opt.id === 'npc') {
-      setFormData(p => ({ ...p, [`${prefix}_key`]: 'npc', [`${prefix}_id`]: '' }));
-      return;
-    }
-    const id = opt.id.split('-')[1];
-    setFormData(p => ({ ...p, [`${prefix}_key`]: opt.id, [`${prefix}_id`]: id, [`${prefix}_name`]: opt.name.split(' (')[0] }));
-  };
-
-  const handleNameChange = (e, prefix) =>
-    setFormData(p => ({ ...p, [`${prefix}_name`]: e.target.value, [`${prefix}_id`]: '', [`${prefix}_key`]: 'npc' }));
-
   const handleChange = e =>
     setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.from_name || !formData.to_name) { 
-      toast.error('"From" and "To" names are required.'); 
-      return; 
+    const from_name = formData.from.name.trim();
+    const to_name = formData.to.name.trim();
+    if (!from_name || !to_name) {
+      toast.error('"From" and "To" names are required.');
+      return;
     }
-    const payload = {
-      from_id: formData.from_id || null, from_name: formData.from_name,
-      to_id:   formData.to_id   || null, to_name:   formData.to_name,
+    saveMutation.mutate({
+      from_name, to_name,
       level: formData.level, status: formData.status, description: formData.description,
-    };
-    saveMutation.mutate(payload);
+    });
   };
 
   return (
@@ -1882,22 +1901,12 @@ export function BoonForm({ entities, boon, onSave, onCancel }) {
           
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Debtor <span className="lowercase font-normal opacity-70">(owes the boon)</span></label>
-            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.from_key} onChange={e => handleEntityChange(e, 'from')} disabled={saveMutation.isPending}>
-              {entityOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-            {formData.from_key === 'npc' && (
-              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.from_name} onChange={e => handleNameChange(e, 'from')} disabled={saveMutation.isPending}/>
-            )}
+            <PartyPicker entities={entities} party={formData.from} onChange={from => setFormData(p => ({ ...p, from }))} disabled={saveMutation.isPending} />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Creditor <span className="lowercase font-normal opacity-70">(holds the boon)</span></label>
-            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.to_key} onChange={e => handleEntityChange(e, 'to')} disabled={saveMutation.isPending}>
-              {entityOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-            {formData.to_key === 'npc' && (
-              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.to_name} onChange={e => handleNameChange(e, 'to')} disabled={saveMutation.isPending}/>
-            )}
+            <PartyPicker entities={entities} party={formData.to} onChange={to => setFormData(p => ({ ...p, to }))} disabled={saveMutation.isPending} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1927,6 +1936,82 @@ export function BoonForm({ entities, boon, onSave, onCancel }) {
         <button type="button" className="px-4 py-2 font-bold text-sm tracking-widest uppercase text-on-surface-variant hover:text-on-surface transition-colors" onClick={onCancel} disabled={saveMutation.isPending}>Cancel</button>
         <button type="submit" form="boonForm" className="bg-primary-container text-on-primary-container font-bold text-sm tracking-widest uppercase px-6 py-2 rounded shadow-lg hover:brightness-110 active:scale-95 transition-all" disabled={saveMutation.isPending} style={{opacity: saveMutation.isPending ? 0.7 : 1}}>
           {saveMutation.isPending ? 'Saving...' : 'Save Record'}
+        </button>
+      </div>
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   TRANSFER FORM (an open boon changes hands)
+══════════════════════════════════════════════ */
+export function BoonTransferForm({ entities, boon, onDone, onCancel }) {
+  const queryClient = useQueryClient();
+  // A dead debtor's debt is the usual thing to pass on; otherwise the holder trades it.
+  const [side, setSide] = useState(boon.from_dead && !boon.to_dead ? 'from' : 'to');
+  const [party, setParty] = useState({ key: 'manual', name: '' });
+
+  const transfer = useMutation({
+    mutationFn: (name) => api.post(`/boons/${boon.id}/transfer`, { side, name }),
+    onSuccess: () => {
+      toast.success('Boon transferred');
+      queryClient.invalidateQueries({ queryKey: ['boons'] });
+      onDone();
+    },
+    onError: (err) => toast.error(formatApiError(err, 'The boon was not transferred.')),
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const name = party.name.trim();
+    if (!name) { toast.error('Choose who the boon passes to.'); return; }
+    transfer.mutate(name);
+  };
+
+  const sides = [
+    { value: 'to', title: 'Pass the holding', hint: `${boon.to_name} hands the boon to someone else.` },
+    { value: 'from', title: 'Pass the debt', hint: `Someone else takes on what ${boon.from_name} owes, such as an heir after Final Death.` },
+  ];
+
+  return (
+    <>
+      <div className="flex items-center justify-between p-4 md:p-6 border-b border-outline-variant/10">
+        <h3 className="font-headline-md text-[24px] font-bold text-on-surface">Transfer boon #{boon.id}</h3>
+        <button type="button" className="text-on-surface-variant hover:text-on-surface transition-colors p-1" onClick={onCancel} aria-label="Close">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1">
+        <form id="boonTransferForm" onSubmit={handleSubmit} className="space-y-5">
+          <p className="text-sm text-on-surface-variant">
+            {LEVEL_LABELS[String(boon.level).toLowerCase()] || 'Trivial'} boon: <b className="text-on-surface">{boon.from_name}</b> owes <b className="text-on-surface">{boon.to_name}</b>.
+          </p>
+
+          <fieldset className="space-y-2" disabled={transfer.isPending}>
+            <legend className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5">What changes hands</legend>
+            {sides.map(s => (
+              <label key={s.value} className={`flex items-start gap-3 p-3 rounded gothic-etched-border cursor-pointer ${side === s.value ? 'bg-surface-container-highest' : 'bg-surface-container-lowest'}`}>
+                <input type="radio" name="side" value={s.value} checked={side === s.value} onChange={() => setSide(s.value)} className="mt-1" />
+                <span>
+                  <span className="block text-sm font-bold text-on-surface">{s.title}</span>
+                  <span className="block text-xs text-on-surface-variant">{s.hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+
+          <div className="space-y-1.5">
+            <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">{side === 'to' ? 'New holder' : 'New debtor'}</label>
+            <PartyPicker entities={entities} party={party} onChange={setParty} disabled={transfer.isPending} />
+          </div>
+        </form>
+      </div>
+
+      <div className="p-4 md:p-6 border-t border-outline-variant/10 bg-surface-container flex justify-end gap-3 shrink-0">
+        <button type="button" className="px-4 py-2 font-bold text-sm tracking-widest uppercase text-on-surface-variant hover:text-on-surface transition-colors" onClick={onCancel} disabled={transfer.isPending}>Cancel</button>
+        <button type="submit" form="boonTransferForm" className="bg-primary-container text-on-primary-container font-bold text-sm tracking-widest uppercase px-6 py-2 rounded shadow-lg hover:brightness-110 active:scale-95 transition-all" disabled={transfer.isPending} style={{ opacity: transfer.isPending ? 0.7 : 1 }}>
+          {transfer.isPending ? 'Transferring...' : 'Transfer'}
         </button>
       </div>
     </>

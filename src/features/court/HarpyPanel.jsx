@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/court/CourtActions.module.css';
-import { BoonForm } from '../boons/Boons';
+import { BoonForm, BoonTransferForm } from '../boons/Boons';
 
 const WEIGHT = { trivial: 1, minor: 2, major: 3, life: 4 };
 const LEVELS = ['life', 'major', 'minor', 'trivial'];
@@ -123,6 +123,7 @@ export default function HarpyPanel() {
   const boons = useMemo(() => boonsData?.boons || [], [boonsData]);
   const { totals, people, debtors, creditors } = useLedger(boons);
   const [showForm, setShowForm] = useState(false);
+  const [transferTarget, setTransferTarget] = useState(null);
   const [who, setWho] = useState('');
 
   const person = people.find(p => key(p.name) === who);
@@ -138,13 +139,16 @@ export default function HarpyPanel() {
     <div className={styles.item}>
       <div className={styles.itemHead}>
         <span><b>{b.from_name}</b> <span className={styles.itemMeta}>owes</span> <b>{b.to_name}</b></span>
-        <span className={`${styles.badge} ${lc(b.status) === 'owed' ? styles.bProposed : styles.bClosed}`}>{LABEL[lc(b.level, 'trivial')]} · {lc(b.status, 'owed')}</span>
+        <span className={`${styles.badge} ${lc(b.status) === 'owed' ? styles.bProposed : styles.bClosed}`}>
+          {LABEL[lc(b.level, 'trivial')]} · {lc(b.status, 'owed') === 'owed' && (b.from_dead || b.to_dead) ? 'orphaned' : lc(b.status, 'owed')}
+        </span>
       </div>
       {b.description && <p className={styles.itemBody}>{b.description}</p>}
       {actions && lc(b.status, 'owed') === 'owed' && (
         <div className={styles.row}>
           <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => resolve(b, 'paid')}>Repaid</button>
           <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => resolve(b, 'excused')}>Excused</button>
+          <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => setTransferTarget(b)}>Transfer</button>
         </div>
       )}
     </div>
@@ -225,6 +229,14 @@ export default function HarpyPanel() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
           <div className="bg-surface-container-high gothic-etched-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <BoonForm entities={entData?.entities || []} boon={null} onSave={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
+          </div>
+        </div>
+      )}
+
+      {transferTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setTransferTarget(null)}>
+          <div className="bg-surface-container-high gothic-etched-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <BoonTransferForm entities={entData?.entities || []} boon={transferTarget} onDone={() => setTransferTarget(null)} onCancel={() => setTransferTarget(null)} />
           </div>
         </div>
       )}
