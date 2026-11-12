@@ -15,6 +15,8 @@ import { customClanEmojis, EMOJI_PICKER_CATEGORIES, emojiObjectToToken, crestify
 import { DISCORD_PREFIX_OPTIONS, getDefaultDiscordPrefix } from '../../constants/outletConstants';
 
 const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
+// Admin only: loaded on first open.
+const PrintTool = React.lazy(() => import('../admin/PrintTool'));
 
 // Decree body as safe HTML, with ':Clan_Name:' tokens drawn as crests.
 const decreeHtml = (body, opts) => crestifyHtml(sanitizeHtml(String(body ?? '').replace(/\n/g, '<br/>')), opts);
@@ -115,6 +117,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
   const [editingDecree, setEditingDecree] = useState(null); // within its first hour, author or admin
   const [loading, setLoading] = useState(true);
   const [decreePrintMode, setDecreePrintMode] = useState(null);
+  const [printToolOpen, setPrintToolOpen] = useState(false); // admins: the A4 / thermal print tool
 
   const handlePrintAllDecrees = () => {
     setDecreePrintMode('all');
@@ -263,9 +266,9 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
             <h1 className={styles.decreeHeaderTitle}>Decrees</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button 
-              className={styles.printDecreesBtn} 
-              onClick={handlePrintAllDecrees}
+            <button
+              className={styles.printDecreesBtn}
+              onClick={isAdmin ? () => setPrintToolOpen(true) : handlePrintAllDecrees}
               data-cuelume-press
               data-cuelume-hover
               title="Print decrees"
@@ -508,6 +511,12 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
             items={items}
             onClose={() => setDecreePrintMode(null)}
           />
+        )}
+
+        {printToolOpen && (
+          <React.Suspense fallback={null}>
+            <PrintTool initialKinds={['decrees']} onClose={() => setPrintToolOpen(false)} />
+          </React.Suspense>
         )}
       </motion.div>
     </Skeleton>

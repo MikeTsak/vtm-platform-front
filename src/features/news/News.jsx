@@ -503,7 +503,7 @@ export default function News() {
       {printToolOpen && (
         <React.Suspense fallback={null}>
           <PrintTool
-            initialKinds={isRumorsPage ? ['rumors'] : ['news', 'decrees']}
+            initialKinds={isRumorsPage ? ['rumors'] : ['news']}
             onClose={() => setPrintToolOpen(false)}
           />
         </React.Suspense>

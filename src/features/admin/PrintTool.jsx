@@ -36,7 +36,7 @@ const firstTitle = (raw) => {
 };
 // Logos for paper: the dark version where the site uses a white one, and
 // none where it's an outside picture we can't recolour (the name prints instead).
-const PRINT_LOGOS = { OPENTV: '/img/open-beyond-logo.png', SKAI: '/img/skai-logo.png', GOSSIP: null, RUMOR: null };
+const PRINT_LOGOS = { OPENTV: '/img/open-beyond-logo.png', SKAI: '/img/skai-logo.png', GOSSIP: '/img/gossip-tv-logo.png', RUMOR: null };
 
 // A logo as pure black/white dots for the thermal printer. Logos are the
 // site's own files, so the browser can read their pixels. Light pixels drop
@@ -55,14 +55,30 @@ const logoDots = (src) => new Promise((resolve) => {
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
     const px = ctx.getImageData(0, 0, w, h);
+    // Inked area, so the blank border around the logo is trimmed off.
+    let [x0, y0, x1, y1] = [w, h, -1, -1];
     for (let i = 0; i < px.data.length; i += 4) {
       const lum = 0.299 * px.data[i] + 0.587 * px.data[i + 1] + 0.114 * px.data[i + 2];
       const v = lum < 200 ? 0 : 255;
       px.data[i] = px.data[i + 1] = px.data[i + 2] = v;
       px.data[i + 3] = 255;
+      if (!v) {
+        const p = i / 4;
+        const x = p % w;
+        const y = (p - x) / w;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
     }
+    if (x1 < 0) { resolve(null); return; } // nothing dark enough to print
     ctx.putImageData(px, 0, 0);
-    resolve(c.toDataURL('image/png'));
+    const out = document.createElement('canvas');
+    out.width = x1 - x0 + 1;
+    out.height = y1 - y0 + 1;
+    out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    resolve(out.toDataURL('image/png'));
   };
   img.onerror = () => resolve(null);
   img.src = src;
@@ -101,8 +117,11 @@ function Ticket({ item }) {
 
   return (
     <section className="ticket">
-      {logo && <img className="logo" src={logo} alt={outlet.name} />}
-      <div className="kind"><span>{label}</span><span>{item.kind === 'rumor' ? 'Heard' : 'Published'} {formatAthensDate(item.created_at)}</span></div>
+      <div className="kind">
+        {/* The outlet's logo stands in for its name (the name prints if the logo can't). */}
+        <span>{logo ? <img className="logo" src={logo} alt={outlet.name} /> : label}</span>
+        <span>{item.kind === 'rumor' ? 'Heard' : 'Published'} {formatAthensDate(item.created_at)}</span>
+      </div>
       <h1 className="title">{item.title}</h1>
       {item.subtitle && <p className="sub">{item.subtitle}</p>}
       {byline && <div className="meta">{byline}</div>}
@@ -136,7 +155,8 @@ const CSS = {
     .body a { text-decoration: none; }
     img { max-width: 100%; height: auto; }
     img.dots { display: block; width: 100%; margin: 2mm 0; image-rendering: pixelated; border-radius: 0 !important; }
-    img.logo { display: block; max-width: 70%; max-height: 16mm; margin: 0 auto 2.5mm; image-rendering: pixelated; }
+    .kind { align-items: flex-end; }
+    img.logo { display: block; height: 10mm; max-width: 42mm; object-fit: contain; object-position: left bottom; image-rendering: pixelated; }
     .body ul, .body ol { margin: 0 0 2mm; padding-left: 5mm; }
     .body li { margin-bottom: 1mm; }
     .body h1, .body h2, .body h3 { font-size: 12pt; margin: 3mm 0 1.5mm; }
@@ -154,7 +174,8 @@ const CSS = {
     .body p { margin: 0 0 3mm; }
     img { max-width: 100%; height: auto; }
     img.media { display: block; max-height: 90mm; margin: 3mm auto; object-fit: contain; }
-    img.logo { display: block; max-height: 12mm; max-width: 50%; margin: 0 0 3mm; }
+    .kind { align-items: flex-end; }
+    img.logo { display: block; height: 10mm; max-width: 60mm; object-fit: contain; object-position: left bottom; }
     .body ul, .body ol { margin: 0 0 3mm; padding-left: 7mm; }
     .body h1, .body h2, .body h3 { font-size: 13pt; margin: 4mm 0 2mm; }
   `,
@@ -299,7 +320,7 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
           setBusy(`Converting pictures ${++done} of ${imgs.length}...`);
           if (img.classList.contains('logo')) {
             const dots = await logoDots(img.getAttribute('src'));
-            if (dots) img.setAttribute('src', dots); else img.remove();
+            if (dots) img.setAttribute('src', dots); else img.replaceWith(doc.createTextNode(img.getAttribute('alt') || ''));
             continue;
           }
           try {
@@ -426,10 +447,10 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
             {paper === 'thermal' && setupOpen && (
               <ol className="m-0 pl-5 text-[13px] text-on-surface-variant flex flex-col gap-1.5 leading-relaxed">
                 <li>Install Epson's <b className="text-on-surface">Advanced Printer Driver (APD 6)</b> for the TM-T20III from Epson's support site, with the printer plugged in.</li>
-                <li>In Windows, open the printer's <b className="text-on-surface">Printing preferences</b>: paper size <b className="text-on-surface">Roll Paper 80 x 297 mm</b>, and the feed/cut choice set to cut <b className="text-on-surface">per page</b> with feed (the default cuts once per document, which prints everything as one long receipt). Set the same under Printer properties, Advanced, <b className="text-on-surface">Printing Defaults</b>.</li>
+                <li>In Windows, open the printer's <b className="text-on-surface">Printing preferences</b>: paper size <b className="text-on-surface">Roll Paper 80 x 3276 mm</b> (so a long article stays one ticket; short ones still stop where their text ends), and the feed/cut choice set to cut <b className="text-on-surface">per page</b> with feed (the default cuts once per document, which prints everything as one long receipt). Set the same under Printer properties, Advanced, <b className="text-on-surface">Printing Defaults</b>.</li>
                 <li>Text overlapping between tickets means paper reduction is trimming too much: turn line-spacing reduction off in the TM-T20III Utility and keep only the bottom-margin reduction.</li>
-                <li>In Chrome's print dialog pick the TM-T20III, margins <b className="text-on-surface">Default</b>, scale <b className="text-on-surface">Default</b>.</li>
-                <li>Print one item first to check. A ticket longer than 297 mm is cut in two: pick the 80 x 3276 mm paper size for long articles.</li>
+                <li>In Chrome's print dialog pick the TM-T20III, then under More settings: paper size <b className="text-on-surface">Roll Paper 80 x 3276 mm</b>, margins <b className="text-on-surface">Default</b>, scale <b className="text-on-surface">Default</b>.</li>
+                <li>Print one short rumor first. If it feeds a long blank strip after the text, turn on bottom-margin paper reduction in the driver.</li>
               </ol>
             )}
           </div>
