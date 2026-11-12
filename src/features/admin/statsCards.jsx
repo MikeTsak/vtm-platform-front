@@ -344,39 +344,46 @@ function ThermalCard({ card }) {
   }
 }
 
+// The receipt is a flat run of `.unit` blocks (header, one per card with its
+// section heading ahead of the first, footer). printDocument({ paginateMm })
+// measures them and starts a new page between units, so a cut never lands
+// inside a card.
 export function ThermalReport({ title, periodLabel, sections }) {
   return (
     <div className="report">
-      <header>
-        <div className="brand">EREBUS PORTAL</div>
-        {title && <h1>{title}</h1>}
-        <div className="period">{periodLabel}</div>
-      </header>
-      {sections.map((sec) => (
-        <section key={sec.id}>
-          <h2>{sec.title}</h2>
-          {sec.cards.map((card) => <div key={card.id} className="card"><ThermalCard card={card} /></div>)}
-        </section>
-      ))}
-      <footer>Athens Through-Time Larp · Erebus Portal</footer>
+      <div className="unit">
+        <header>
+          <div className="brand">EREBUS PORTAL</div>
+          {title && <h1>{title}</h1>}
+          <div className="period">{periodLabel}</div>
+        </header>
+      </div>
+      {sections.flatMap((sec) => sec.cards.map((card, i) => (
+        <div key={card.id} className="unit card">
+          {i === 0 && <h2>{sec.title}</h2>}
+          <ThermalCard card={card} />
+        </div>
+      )))}
+      <div className="unit"><footer>Athens Through-Time Larp · Erebus Portal</footer></div>
     </div>
   );
 }
 
-// One continuous receipt (no page breaks, so no cuts until the end).
+// Normal-size text on the roll paper. Page breaks are added by printDocument.
 export const thermalReportCss = (sideMm) => `
   @page { margin: 0; }
   html, body { margin: 0; background: #fff; }
   * { color: #000 !important; box-sizing: border-box; }
-  .report { padding: 3mm ${sideMm}mm 10mm; font: 10pt/1.3 Arial, Helvetica, sans-serif; }
-  header { text-align: center; border-bottom: 3px solid #000; padding-bottom: 2mm; margin-bottom: 3mm; }
+  .report { padding: 0 ${sideMm}mm; font: 10pt/1.3 Arial, Helvetica, sans-serif; }
+  .unit { display: flow-root; padding-bottom: 2.5mm; }
+  .unit.pageStart { padding-top: 3mm; }
+  .report > .unit:first-child { padding-top: 3mm; }
+  header { text-align: center; border-bottom: 3px solid #000; padding-bottom: 2mm; margin-bottom: 1mm; }
   .brand { font-size: 8pt; font-weight: 700; letter-spacing: .25em; }
   h1 { font-size: 16pt; margin: 1mm 0; line-height: 1.1; }
   .period { font-size: 9pt; font-weight: 700; }
-  section { margin-top: 4mm; }
-  h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: .08em; border-bottom: 2px solid #000; margin: 0 0 2mm; padding-bottom: .5mm; }
-  .card { padding: 1.5mm 0 2.5mm; border-bottom: 1px dashed #000; }
-  .card:last-child { border-bottom: 0; }
+  h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: .08em; border-bottom: 2px solid #000; margin: 2mm 0 2mm; padding-bottom: .5mm; }
+  .card { border-bottom: 1px dashed #000; }
   h3 { font-size: 10pt; font-weight: 800; margin: 0 0 1mm; }
   p { margin: .8mm 0 0; font-size: 9pt; }
   .big { font-size: 22pt; font-weight: 800; line-height: 1.1; }

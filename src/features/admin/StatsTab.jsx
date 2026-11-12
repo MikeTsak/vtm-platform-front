@@ -12,7 +12,7 @@ import api, { formatApiError } from '../../core/api';
 import FaGlyph from '../../ui/FaGlyph';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { StatCard, Poster, SectionTitle, spanOf, ThermalReport, thermalReportCss } from './statsCards';
-import { MAX_PAGE_MM, printDocument, thermalSideMm } from './thermalPrint';
+import { PAGE_CHOICES, printDocument, saveThermalPageMm, thermalPageMm, thermalSideMm } from './thermalPrint';
 import s from '../../styles/Stats.module.css';
 
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date());
@@ -101,19 +101,19 @@ export default function StatsTab() {
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   }
 
-  // Thermal printer: the ticked cards as one long receipt of black text and
-  // black bars (ThermalReport), cut once at the end. Shrinking the dark
-  // poster to 72 mm and dithering it was unreadable, and slow.
+  // Thermal printer: the ticked cards as black text and black bars
+  // (ThermalReport) at normal size, in pieces of the chosen paper length with
+  // a cut between pieces (never through a card), or one long receipt on the
+  // 3276 mm paper. Shrinking the dark poster to 72 mm and dithering it was
+  // unreadable, and slow.
+  const [pageMm, setPageMm] = useState(thermalPageMm);
   async function printThermal() {
     setError('');
     setDone('');
     try {
       const html = renderToStaticMarkup(<ThermalReport title={title.trim()} periodLabel={periodLabel} sections={chosen} />);
-      const fit = await printDocument(html, thermalReportCss(thermalSideMm()), { fitPage: true });
-      const metres = (fit.heightMm / 1000).toFixed(2);
-      setDone(fit.capped
-        ? `The report is longer than the printer's longest page (${MAX_PAGE_MM / 1000} m), so it will be cut once. Untick some cards to keep it whole.`
-        : `${chosenCount} ${chosenCount === 1 ? 'card' : 'cards'} as one ${metres} m receipt, sent to the print dialog.`);
+      const { pages } = await printDocument(html, thermalReportCss(thermalSideMm()), { paginateMm: pageMm });
+      setDone(`${chosenCount} ${chosenCount === 1 ? 'card' : 'cards'} in ${pages} ${pages === 1 ? 'piece' : 'pieces'}, sent to the print dialog. In it, set Paper size to Roll Paper 80 x ${pageMm} mm and Scale to Default.`);
     } catch (e) {
       setError(`Printing failed: ${e.message || e}`);
     }
@@ -188,8 +188,14 @@ export default function StatsTab() {
             <FaGlyph name="fa-image" size={15} />Copy image
           </button>
         )}
+        <label className={s.field}>
+          <span>Thermal paper</span>
+          <select className={s.select} value={pageMm} onChange={(e) => { const mm = Number(e.target.value); setPageMm(mm); saveThermalPageMm(mm); }}>
+            {PAGE_CHOICES.map((c) => <option key={c.mm} value={c.mm}>{c.label}</option>)}
+          </select>
+        </label>
         <button type="button" className={s.btn} onClick={printThermal} disabled={busy || !chosenCount}
-          title="One card per ticket on the thermal printer, cut after each">
+          title="Print the ticked cards on the thermal printer at normal size">
           <FaGlyph name="fa-print" size={15} />
           {`Print ${chosenCount} on thermal`}
         </button>
