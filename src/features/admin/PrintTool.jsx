@@ -17,6 +17,7 @@ import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatte
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import MarkdownBody from '../../components/MarkdownBody';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 const KINDS = [
   { key: 'rumors', label: 'Rumors', icon: 'campaign' },
@@ -33,6 +34,40 @@ const firstTitle = (raw) => {
   if (typeof t === 'string') { try { t = JSON.parse(t); } catch { t = t.split(','); } }
   return Array.isArray(t) ? String(t[0] || '').trim() : '';
 };
+// Logos for paper: the dark version where the site uses a white one, and
+// none where it's an outside picture we can't recolour (the name prints instead).
+const PRINT_LOGOS = { OPENTV: '/img/open-beyond-logo.png', SKAI: '/img/skai-logo.png', GOSSIP: null, RUMOR: null };
+
+// A logo as pure black/white dots for the thermal printer. Logos are the
+// site's own files, so the browser can read their pixels. Light pixels drop
+// out and anything darker burns, so coloured lettering prints solid.
+const logoDots = (src) => new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => {
+    const w = Math.min(img.naturalWidth || 576, 576);
+    const h = Math.round(((img.naturalHeight || 100) * w) / (img.naturalWidth || 576));
+    if (!w || !h) { resolve(null); return; }
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h);
+    for (let i = 0; i < px.data.length; i += 4) {
+      const lum = 0.299 * px.data[i] + 0.587 * px.data[i + 1] + 0.114 * px.data[i + 2];
+      const v = lum < 200 ? 0 : 255;
+      px.data[i] = px.data[i + 1] = px.data[i + 2] = v;
+      px.data[i + 3] = 255;
+    }
+    ctx.putImageData(px, 0, 0);
+    resolve(c.toDataURL('image/png'));
+  };
+  img.onerror = () => resolve(null);
+  img.src = src;
+});
+
 const itemKey = (it) => `${it.kind}-${it.id}`;
 const itemLabel = (it) => (it.kind === 'boon' ? `${it.from_name} owes ${it.to_name}` : it.title);
 // Clan crests are small inline glyphs: they stay as they are.
@@ -55,21 +90,28 @@ function Ticket({ item }) {
     );
   }
 
+  const outlet = item.kind === 'news' ? NEWS_OUTLETS[item.theme] : null;
+  const logo = !outlet ? null : item.theme in PRINT_LOGOS ? PRINT_LOGOS[item.theme] : outlet.logo;
   const label = item.kind === 'rumor' ? 'Rumor'
     : item.kind === 'decree' ? 'Court Decree'
-      : (NEWS_OUTLETS[item.theme]?.name || 'News');
+      : (outlet?.name || 'News');
   const byline = item.kind === 'news' ? (item.journalist_name ? `By ${item.journalist_name}` : null)
     : item.kind === 'decree' && item.author_name ? `Issued by ${[firstTitle(item.author_titles), item.author_name].filter(Boolean).join(' ')}`
       : null;
 
   return (
     <section className="ticket">
+      {logo && <img className="logo" src={logo} alt={outlet.name} />}
       <div className="kind"><span>{label}</span><span>{item.kind === 'rumor' ? 'Heard' : 'Published'} {formatAthensDate(item.created_at)}</span></div>
       <h1 className="title">{item.title}</h1>
       {item.subtitle && <p className="sub">{item.subtitle}</p>}
       {byline && <div className="meta">{byline}</div>}
       {media && <img className="media" src={media} alt="" />}
-      <MarkdownBody content={item.body} className="body" whiteCrest={false} />
+      {/* Articles are rich HTML, as the news page shows them; rumours and
+          decrees are the markdown the site renders with MarkdownBody. */}
+      {item.kind === 'news'
+        ? <div className="body" dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
+        : <MarkdownBody content={item.body} className="body" whiteCrest={false} />}
     </section>
   );
 }
@@ -94,6 +136,11 @@ const CSS = {
     .body a { text-decoration: none; }
     img { max-width: 100%; height: auto; }
     img.dots { display: block; width: 100%; margin: 2mm 0; image-rendering: pixelated; border-radius: 0 !important; }
+    img.logo { display: block; max-width: 70%; max-height: 16mm; margin: 0 auto 2.5mm; image-rendering: pixelated; }
+    .body ul, .body ol { margin: 0 0 2mm; padding-left: 5mm; }
+    .body li { margin-bottom: 1mm; }
+    .body h1, .body h2, .body h3 { font-size: 12pt; margin: 3mm 0 1.5mm; }
+    .body strong, .body b { font-weight: 800; }
   `,
   a4: `
     @page { size: A4; margin: 14mm; }
@@ -107,6 +154,9 @@ const CSS = {
     .body p { margin: 0 0 3mm; }
     img { max-width: 100%; height: auto; }
     img.media { display: block; max-height: 90mm; margin: 3mm auto; object-fit: contain; }
+    img.logo { display: block; max-height: 12mm; max-width: 50%; margin: 0 0 3mm; }
+    .body ul, .body ol { margin: 0 0 3mm; padding-left: 7mm; }
+    .body h1, .body h2, .body h3 { font-size: 13pt; margin: 4mm 0 2mm; }
   `,
 };
 
@@ -124,6 +174,12 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
   });
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(new Set());
+  // Hide what was already printed (back: print_log), on unless turned off.
+  const [onlyNew, setOnlyNew] = useState(() => {
+    try { return localStorage.getItem('printTool.onlyNew') !== '0'; } catch { return true; }
+  });
+  // Items just sent to the printer, waiting for "did they come out?".
+  const [justPrinted, setJustPrinted] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState('');
   const [setupOpen, setSetupOpen] = useState(false);
@@ -140,8 +196,9 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
     try {
       localStorage.setItem('printTool.paper', paper);
       localStorage.setItem('printTool.sideMm', String(sideMm));
+      localStorage.setItem('printTool.onlyNew', onlyNew ? '1' : '0');
     } catch { /* private window */ }
-  }, [paper, sideMm]);
+  }, [paper, sideMm, onlyNew]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
@@ -182,7 +239,8 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
       .then(({ data }) => {
         if (!live) return;
         setItems(data.items || []);
-        setSelected(new Set((data.items || []).map(itemKey)));
+        // Ticked: what hasn't been printed yet.
+        setSelected(new Set((data.items || []).filter(it => !it.printed_at).map(itemKey)));
       })
       .catch((e) => { if (live) { setItems([]); toast.error(formatApiError(e, 'Could not load the items.')); } })
       .finally(() => { if (live) setLoading(false); });
@@ -205,7 +263,23 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
     return next;
   });
 
-  const chosen = items.filter(it => selected.has(itemKey(it)));
+  const shown = onlyNew ? items.filter(it => !it.printed_at) : items;
+  const chosen = shown.filter(it => selected.has(itemKey(it)));
+  const printedBefore = items.length - items.filter(it => !it.printed_at).length;
+
+  const markPrinted = async () => {
+    const batch = justPrinted;
+    setJustPrinted(null);
+    try {
+      const { data } = await api.post('/admin/print/printed', { items: batch.map(it => ({ kind: it.kind, id: it.id })) });
+      const keys = new Set(batch.map(itemKey));
+      setItems(cur => cur.map(it => (keys.has(itemKey(it)) ? { ...it, printed_at: data.printed_at } : it)));
+      setSelected(cur => new Set([...cur].filter(k => !keys.has(k))));
+      toast.success(`${batch.length} marked as printed`);
+    } catch (e) {
+      toast.error(formatApiError(e, 'Could not save that.'));
+    }
+  };
 
   const print = async () => {
     if (!chosen.length) return;
@@ -223,6 +297,11 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
         let done = 0;
         for (const img of imgs) {
           setBusy(`Converting pictures ${++done} of ${imgs.length}...`);
+          if (img.classList.contains('logo')) {
+            const dots = await logoDots(img.getAttribute('src'));
+            if (dots) img.setAttribute('src', dots); else img.remove();
+            continue;
+          }
           try {
             const { data } = await api.get('/admin/print/dither', { params: { src: img.getAttribute('src') }, responseType: 'blob' });
             const url = URL.createObjectURL(data);
@@ -250,7 +329,10 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
       await Promise.all([...fdoc.images].map(img => (img.complete ? null : new Promise(r => { img.onload = r; img.onerror = r; }))));
       await fdoc.fonts?.ready;
       frame.contentWindow.focus();
+      // Returns once the print dialog closes. Whether it printed or was
+      // cancelled the browser doesn't say, so the admin confirms.
       frame.contentWindow.print();
+      setJustPrinted(chosen);
     } catch (e) {
       toast.error(formatApiError(e, 'Could not prepare the printout.'));
     } finally {
@@ -354,24 +436,34 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <span className={label}>{loading ? 'Loading...' : `${chosen.length} of ${items.length} selected`}</span>
-              {items.length > 0 && (
+              <span className={label}>{loading ? 'Loading...' : `${chosen.length} of ${shown.length} selected`}</span>
+              {shown.length > 0 && (
                 <span className="flex gap-1">
-                  <button type="button" onClick={() => setSelected(new Set(items.map(itemKey)))} className="px-2 min-h-[36px] text-[13px] text-primary">All</button>
+                  <button type="button" onClick={() => setSelected(new Set(shown.map(itemKey)))} className="px-2 min-h-[36px] text-[13px] text-primary">All</button>
                   <button type="button" onClick={() => setSelected(new Set())} className="px-2 min-h-[36px] text-[13px] text-primary">None</button>
                 </span>
               )}
             </div>
-            {!loading && !items.length && (
-              <p className="m-0 text-[13px] text-on-surface-variant">{kinds.size ? 'Nothing in this period.' : 'Choose what to print.'}</p>
+            <label className="flex items-center gap-2 text-[13px] text-on-surface min-h-[36px] cursor-pointer">
+              <input type="checkbox" checked={onlyNew} onChange={e => setOnlyNew(e.target.checked)} className="w-4 h-4" />
+              Only what hasn't been printed yet
+              {printedBefore > 0 && <span className="text-on-surface-variant">({printedBefore} already printed{onlyNew ? ', hidden' : ''})</span>}
+            </label>
+            {!loading && !shown.length && (
+              <p className="m-0 text-[13px] text-on-surface-variant">
+                {!kinds.size ? 'Choose what to print.' : items.length ? 'Everything here has been printed already.' : 'Nothing in this period.'}
+              </p>
             )}
             <ul className="m-0 p-0 list-none flex flex-col border border-outline-variant rounded overflow-hidden">
-              {items.map(it => (
+              {shown.map(it => (
                 <li key={itemKey(it)} className="border-b border-outline-variant last:border-b-0">
                   <label className="flex items-center gap-3 px-3 min-h-[48px] cursor-pointer hover:bg-surface-container-highest">
                     <input type="checkbox" checked={selected.has(itemKey(it))} onChange={() => toggleItem(itemKey(it))} className="w-4 h-4 shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant w-14 shrink-0">{KIND_TAG[it.kind]}</span>
-                    <span className="flex-1 min-w-0 truncate text-[14px]">{itemLabel(it)}</span>
+                    <span className="flex-1 min-w-0 flex flex-col">
+                      <span className="truncate text-[14px]">{itemLabel(it)}</span>
+                      {it.printed_at && <span className="text-[11px] text-on-surface-variant">Printed {formatAthensDate(it.printed_at)}</span>}
+                    </span>
                     {it.media_url && !isVideoUrl(it.media_url) && <span className="material-symbols-outlined text-[16px] text-on-surface-variant" title="Has a picture" aria-label="Has a picture">image</span>}
                     <span className="text-[11px] text-on-surface-variant shrink-0">{formatAthensDate(it.created_at)}</span>
                   </label>
@@ -380,6 +472,18 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
             </ul>
           </div>
         </div>
+
+        {justPrinted && (
+          <div role="status" className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-outline-variant bg-surface-container-highest shrink-0">
+            <span className="text-[14px]">Did {justPrinted.length === 1 ? 'it' : `all ${justPrinted.length}`} print?</span>
+            <span className="flex gap-2">
+              <button type="button" onClick={() => setJustPrinted(null)} className="px-4 min-h-[44px] rounded border border-outline-variant text-[13px] text-on-surface-variant">No</button>
+              <button type="button" onClick={markPrinted} className="px-4 min-h-[44px] rounded bg-primary-container text-on-primary-container font-bold text-[13px]">
+                Yes, mark as printed
+              </button>
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-outline-variant shrink-0" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
           <span className="text-[12px] text-on-surface-variant min-w-0" aria-live="polite">{busy}</span>
