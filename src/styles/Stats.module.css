@@ -117,8 +117,15 @@
 .awardTitle { font-family: 'Cinzel', serif; font-size: 0.95em; letter-spacing: 0.06em; color: var(--gold); }
 .who { display: flex; align-items: center; gap: 0.45em; font-size: 1.15em; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; min-width: 0; }
 .who > span { min-width: 0; }
-.clanMark { width: 1.3em; height: 1.3em; flex: 0 0 auto; }
-.clanMarkSm { width: 1.1em; height: 1.1em; flex: 0 0 auto; }
+/* Clan symbols are not square (Malkavian is twice as tall as wide, the Ministry
+   twice as wide as tall). Each sits in an equal slot, so names still line up,
+   and keeps its own proportions inside it: capped by max-width / max-height
+   rather than object-fit, which html2canvas mis-draws (see the note above). */
+.clanMark, .clanMarkSm { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.clanMark { width: 1.4em; height: 1.4em; }
+.clanMarkSm { width: 1.2em; height: 1.2em; }
+.clanMark img { max-width: 1.4em; max-height: 1.4em; width: auto; height: auto; }
+.clanMarkSm img { max-width: 1.2em; max-height: 1.2em; width: auto; height: auto; }
 
 /* Ranked horizontal bars: one hue, 4px rounded data end, square at the baseline. */
 .bars { display: flex; flex-direction: column; gap: 0.55em; }

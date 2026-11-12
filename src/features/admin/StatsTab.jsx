@@ -12,7 +12,7 @@ import api, { formatApiError } from '../../core/api';
 import FaGlyph from '../../ui/FaGlyph';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { StatCard, Poster, SectionTitle, spanOf, ThermalReport, thermalReportCss } from './statsCards';
-import { printDocument, thermalSideMm } from './thermalPrint';
+import { MAX_PAGE_MM, printDocument, thermalSideMm } from './thermalPrint';
 import s from '../../styles/Stats.module.css';
 
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date());
@@ -109,8 +109,11 @@ export default function StatsTab() {
     setDone('');
     try {
       const html = renderToStaticMarkup(<ThermalReport title={title.trim()} periodLabel={periodLabel} sections={chosen} />);
-      await printDocument(html, thermalReportCss(thermalSideMm()));
-      setDone(`${chosenCount} ${chosenCount === 1 ? 'card' : 'cards'} sent to the print dialog.`);
+      const fit = await printDocument(html, thermalReportCss(thermalSideMm()), { fitPage: true });
+      const metres = (fit.heightMm / 1000).toFixed(2);
+      setDone(fit.capped
+        ? `The report is longer than the printer's longest page (${MAX_PAGE_MM / 1000} m), so it will be cut once. Untick some cards to keep it whole.`
+        : `${chosenCount} ${chosenCount === 1 ? 'card' : 'cards'} as one ${metres} m receipt, sent to the print dialog.`);
     } catch (e) {
       setError(`Printing failed: ${e.message || e}`);
     }

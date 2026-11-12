@@ -25,7 +25,7 @@ export const spanOf = (card) => {
 
 function ClanMark({ clan, small }) {
   if (!clan || clan === 'Unknown') return null;
-  return <img src={symlogoWhite(clan)} alt="" className={small ? s.clanMarkSm : s.clanMark} />;
+  return <span className={small ? s.clanMarkSm : s.clanMark}><img src={symlogoWhite(clan)} alt="" /></span>;
 }
 
 const Title = ({ children }) => <h3 className={s.cardTitle}>{children}</h3>;
@@ -375,7 +375,7 @@ export const thermalReportCss = (sideMm) => `
   .period { font-size: 9pt; font-weight: 700; }
   section { margin-top: 4mm; }
   h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: .08em; border-bottom: 2px solid #000; margin: 0 0 2mm; padding-bottom: .5mm; }
-  .card { break-inside: avoid; padding: 1.5mm 0 2.5mm; border-bottom: 1px dashed #000; }
+  .card { padding: 1.5mm 0 2.5mm; border-bottom: 1px dashed #000; }
   .card:last-child { border-bottom: 0; }
   h3 { font-size: 10pt; font-weight: 800; margin: 0 0 1mm; }
   p { margin: .8mm 0 0; font-size: 9pt; }
