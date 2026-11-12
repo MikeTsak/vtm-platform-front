@@ -18,6 +18,7 @@ import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import MarkdownBody from '../../components/MarkdownBody';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { printDocument } from './thermalPrint';
 
 const KINDS = [
   { key: 'rumors', label: 'Rumors', icon: 'campaign' },
@@ -204,7 +205,6 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState('');
   const [setupOpen, setSetupOpen] = useState(false);
-  const frameRef = useRef(null);
   const blobsRef = useRef([]);
 
   // Thermal side margin in mm: a calibration knob, since how close to the
@@ -268,10 +268,7 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
     return () => { live = false; };
   }, [kinds, range]);
 
-  useEffect(() => () => {
-    blobsRef.current.forEach(u => URL.revokeObjectURL(u));
-    frameRef.current?.remove();
-  }, []);
+  useEffect(() => () => blobsRef.current.forEach(u => URL.revokeObjectURL(u)), []);
 
   const toggleKind = (k) => setKinds(cur => {
     const next = new Set(cur);
@@ -336,23 +333,9 @@ export default function PrintTool({ onClose, initialKinds = ['rumors'] }) {
       }
 
       setBusy('Opening the print dialog...');
-      frameRef.current?.remove();
-      const frame = document.createElement('iframe');
-      frame.setAttribute('aria-hidden', 'true');
-      frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
-      frameRef.current = frame;
-      document.body.appendChild(frame);
-      await new Promise((resolve) => {
-        frame.onload = resolve;
-        frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>Print</title><style>:root { --side: ${sideMm}mm; }${CSS[paper]}</style></head><body>${doc.body.innerHTML}</body></html>`;
-      });
-      const fdoc = frame.contentDocument;
-      await Promise.all([...fdoc.images].map(img => (img.complete ? null : new Promise(r => { img.onload = r; img.onerror = r; }))));
-      await fdoc.fonts?.ready;
-      frame.contentWindow.focus();
       // Returns once the print dialog closes. Whether it printed or was
       // cancelled the browser doesn't say, so the admin confirms.
-      frame.contentWindow.print();
+      await printDocument(doc.body.innerHTML, `:root { --side: ${sideMm}mm; }${CSS[paper]}`);
       setJustPrinted(chosen);
     } catch (e) {
       toast.error(formatApiError(e, 'Could not prepare the printout.'));

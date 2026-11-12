@@ -255,6 +255,149 @@ export function SectionTitle({ section }) {
   return <h2 className={s.sectionTitle}><FaGlyph name={section.icon} style={em(0.9)} />{section.title}</h2>;
 }
 
+/* ---------------- Thermal receipt (StatsTab "Print on thermal") ----------------
+   The same cards as plain black text and solid black marks, for a 72 mm roll:
+   the dark poster shrunk to that width and dithered was unreadable. Printed
+   as real text by the printer driver, so it stays sharp at small sizes. */
+
+const pct = (v, max) => `${Math.max(0, (v / max) * 100).toFixed(1)}%`;
+
+function TBar({ label, value, max, note }) {
+  return (
+    <div className="row">
+      <div className="kv"><span>{txt(label)}</span><b>{num(value)}{note ? ` ${note}` : ''}</b></div>
+      <div className="track"><div className="fill" style={{ width: pct(value, max) }} /></div>
+    </div>
+  );
+}
+
+function ThermalCard({ card }) {
+  const head = card.kind === 'award' ? null : <h3>{card.title}</h3>;
+  switch (card.kind) {
+    case 'hero':
+      return <>{head}<div className="big">{card.value}</div>{card.sub && <p>{card.sub}</p>}</>;
+    case 'tiles':
+      return <>{head}{card.items.map((it) => <div key={it.label} className="kv"><span>{it.label}{it.sub ? ` (${it.sub})` : ''}</span><b>{txt(it.value)}</b></div>)}</>;
+    case 'award':
+      return <><h3>{card.title}</h3><div className="name">{card.name}</div><p>{card.value}</p></>;
+    case 'bars':
+    case 'columns': {
+      const max = Math.max(1, ...card.items.map((i) => i.value));
+      return <>{head}{card.items.map((it, i) => <TBar key={i} label={it.label} value={it.value} max={max} />)}{card.sub && <p>{card.sub}</p>}</>;
+    }
+    case 'split': {
+      const total = card.items.reduce((a, i) => a + i.value, 0) || 1;
+      return <>{head}{card.items.map((it) => <TBar key={it.label} label={it.label} value={it.value} max={total} note={`(${Math.round((it.value / total) * 100)}%)`} />)}</>;
+    }
+    case 'timeline': {
+      const pts = card.points;
+      const max = Math.max(1, ...pts.map((p) => p.value));
+      const W = 1000; const H = 240;
+      const x = (i) => (pts.length === 1 ? W / 2 : (i / (pts.length - 1)) * W);
+      const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${(H - (p.value / max) * H).toFixed(1)}`).join(' ');
+      const peak = pts.reduce((b, p, i) => (p.value > pts[b].value ? i : b), 0);
+      return (
+        <>
+          {head}
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="line">
+            <path d={line} fill="none" stroke="#000" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          </svg>
+          <div className="kv small"><span>{bucketLabel(pts[0].t, card.bucket)}</span><span>{bucketLabel(pts[pts.length - 1].t, card.bucket)}</span></div>
+          <p>Peak {num(max)} {card.unit} ({bucketLabel(pts[peak].t, card.bucket)}), {card.bucket === 'day' ? 'per day' : card.bucket === 'week' ? 'per week' : 'per month'}</p>
+        </>
+      );
+    }
+    case 'heatmap': {
+      const max = Math.max(1, ...card.grid.flat());
+      return (
+        <>
+          {head}
+          <div className="heat">
+            {card.rows.map((day, d) => (
+              <div key={day} className="heatRow">
+                <span>{day.slice(0, 2)}</span>
+                {card.grid[d].map((n, h) => (
+                  <i key={h}>{n > 0 && <b style={{ width: pct(Math.sqrt(n / max), 1), height: pct(Math.sqrt(n / max), 1) }} />}</i>
+                ))}
+              </div>
+            ))}
+            <div className="heatRow small"><span />{[0, 6, 12, 18].map((h) => <em key={h}>{String(h).padStart(2, '0')}</em>)}</div>
+          </div>
+          <p>Bigger square = busier hour (Athens time)</p>
+        </>
+      );
+    }
+    case 'list':
+      return <>{head}{card.items.map((it, i) => <div key={i} className="kv"><span>{i + 1}. {it.name}</span><b>{it.value}</b></div>)}</>;
+    case 'roll':
+      return (
+        <>
+          {head}
+          <div className="name">{card.name}</div>
+          <p>{card.value}</p>
+          <p>Dice: {card.normal.join(' ')}{card.hunger.length ? ` | Hunger: ${card.hunger.join(' ')}` : ''}</p>
+          {card.note && <p>{card.note}</p>}
+        </>
+      );
+    default:
+      return null;
+  }
+}
+
+export function ThermalReport({ title, periodLabel, sections }) {
+  return (
+    <div className="report">
+      <header>
+        <div className="brand">EREBUS PORTAL</div>
+        {title && <h1>{title}</h1>}
+        <div className="period">{periodLabel}</div>
+      </header>
+      {sections.map((sec) => (
+        <section key={sec.id}>
+          <h2>{sec.title}</h2>
+          {sec.cards.map((card) => <div key={card.id} className="card"><ThermalCard card={card} /></div>)}
+        </section>
+      ))}
+      <footer>Athens Through-Time Larp · Erebus Portal</footer>
+    </div>
+  );
+}
+
+// One continuous receipt (no page breaks, so no cuts until the end).
+export const thermalReportCss = (sideMm) => `
+  @page { margin: 0; }
+  html, body { margin: 0; background: #fff; }
+  * { color: #000 !important; box-sizing: border-box; }
+  .report { padding: 3mm ${sideMm}mm 10mm; font: 10pt/1.3 Arial, Helvetica, sans-serif; }
+  header { text-align: center; border-bottom: 3px solid #000; padding-bottom: 2mm; margin-bottom: 3mm; }
+  .brand { font-size: 8pt; font-weight: 700; letter-spacing: .25em; }
+  h1 { font-size: 16pt; margin: 1mm 0; line-height: 1.1; }
+  .period { font-size: 9pt; font-weight: 700; }
+  section { margin-top: 4mm; }
+  h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: .08em; border-bottom: 2px solid #000; margin: 0 0 2mm; padding-bottom: .5mm; }
+  .card { break-inside: avoid; padding: 1.5mm 0 2.5mm; border-bottom: 1px dashed #000; }
+  .card:last-child { border-bottom: 0; }
+  h3 { font-size: 10pt; font-weight: 800; margin: 0 0 1mm; }
+  p { margin: .8mm 0 0; font-size: 9pt; }
+  .big { font-size: 22pt; font-weight: 800; line-height: 1.1; }
+  .name { font-size: 12pt; font-weight: 800; }
+  .kv { display: flex; justify-content: space-between; gap: 2mm; }
+  .kv span { min-width: 0; overflow-wrap: anywhere; }
+  .kv b { white-space: nowrap; }
+  .small { font-size: 8pt; }
+  .row { margin-bottom: 1.2mm; }
+  .track { height: 2.2mm; margin-top: .4mm; }
+  .fill { height: 100%; background: #000 !important; min-width: .6mm; }
+  svg.line { display: block; width: 100%; height: 20mm; border-bottom: 1px solid #000; margin: 1mm 0; }
+  .heat { margin: 1mm 0; }
+  .heatRow { display: grid; grid-template-columns: 5mm repeat(24, 1fr); align-items: center; font-size: 7pt; }
+  .heatRow.small { grid-template-columns: 5mm repeat(4, 1fr); }
+  .heatRow i { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; }
+  .heatRow i b { display: block; background: #000 !important; }
+  .heatRow em { font-style: normal; }
+  footer { margin-top: 4mm; border-top: 3px solid #000; padding-top: 1.5mm; text-align: center; font-size: 8pt; }
+`;
+
 /** The exported image: a wide poster of every section given, or a square holding one card. */
 export function Poster({ shape, title, periodLabel, sections }) {
   const square = shape === 'square';

@@ -10,7 +10,9 @@ import { flushSync } from 'react-dom';
 import html2canvas from 'html2canvas';
 import api, { formatApiError } from '../../core/api';
 import FaGlyph from '../../ui/FaGlyph';
-import { StatCard, Poster, SectionTitle, spanOf } from './statsCards';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { StatCard, Poster, SectionTitle, spanOf, ThermalReport, thermalReportCss } from './statsCards';
+import { printDocument, thermalSideMm } from './thermalPrint';
 import s from '../../styles/Stats.module.css';
 
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date());
@@ -36,7 +38,7 @@ function download(blob, name) {
 export default function StatsTab() {
   const [preset, setPreset] = useState('30');
   const [custom, setCustom] = useState({ from: daysBack(29), to: today() });
-  const [title, setTitle] = useState('Athens by Night');
+  const [title, setTitle] = useState('Athens Through Time');
   const [shape, setShape] = useState('wide');
   const [off, setOff] = useState(() => new Set()); // unticked card ids; new cards start ticked
   const [data, setData] = useState(null);
@@ -97,6 +99,21 @@ export default function StatsTab() {
       onclone: (doc) => { const stage = doc.querySelector('[data-stats-stage]'); if (stage) stage.style.opacity = '1'; },
     });
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  // Thermal printer: the ticked cards as one long receipt of black text and
+  // black bars (ThermalReport), cut once at the end. Shrinking the dark
+  // poster to 72 mm and dithering it was unreadable, and slow.
+  async function printThermal() {
+    setError('');
+    setDone('');
+    try {
+      const html = renderToStaticMarkup(<ThermalReport title={title.trim()} periodLabel={periodLabel} sections={chosen} />);
+      await printDocument(html, thermalReportCss(thermalSideMm()));
+      setDone(`${chosenCount} ${chosenCount === 1 ? 'card' : 'cards'} sent to the print dialog.`);
+    } catch (e) {
+      setError(`Printing failed: ${e.message || e}`);
+    }
   }
 
   async function exportImages(mode) {
@@ -168,6 +185,11 @@ export default function StatsTab() {
             <FaGlyph name="fa-image" size={15} />Copy image
           </button>
         )}
+        <button type="button" className={s.btn} onClick={printThermal} disabled={busy || !chosenCount}
+          title="One card per ticket on the thermal printer, cut after each">
+          <FaGlyph name="fa-print" size={15} />
+          {`Print ${chosenCount} on thermal`}
+        </button>
         <button type="button" className={`${s.btn} ${s.btnPrimary}`} onClick={() => exportImages('download')} disabled={busy || !chosenCount}>
           <FaGlyph name="fa-download" size={15} />
           {busy ? 'Drawing…' : shape === 'wide' ? 'Download image' : `Download ${chosenCount} ${chosenCount === 1 ? 'image' : 'images'}`}
