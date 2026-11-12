@@ -19,6 +19,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 // import GoogleAd from '../../components/GoogleAd';
 
+// Admin only: loaded on first open, with the server renderer it needs.
+const PrintTool = React.lazy(() => import('../admin/PrintTool'));
+
 export default function News() {
   const { user } = useContext(AuthCtx);
   const queryClient = useQueryClient();
@@ -36,12 +39,7 @@ export default function News() {
 
   const { isAdmin, isCourt } = roleFlags(user);
 
-  const handlePrintAllRumors = () => {
-    setRumorPrintTarget('all');
-    setTimeout(() => {
-      window.print();
-    }, 200);
-  };
+  const [printToolOpen, setPrintToolOpen] = useState(false);
 
   const handlePrintSingleRumor = (item) => {
     setRumorPrintTarget(item);
@@ -250,14 +248,14 @@ export default function News() {
                 + Post Rumor
               </button>
             )}
-            {isRumorsPage && isAdmin && (
+            {isAdmin && (
               <button
                 className={`${styles.createBtn} ${styles.printRumorsBtn}`}
-                onClick={handlePrintAllRumors}
-                title="Print all rumors"
+                onClick={() => setPrintToolOpen(true)}
+                title="Print rumors, news, decrees or boons on A4 or the thermal printer"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '6px', verticalAlign: 'text-bottom' }}>print</span>
-                Print Rumors
+                {isRumorsPage ? 'Print Rumors' : 'Print'}
               </button>
             )}
           </div>
@@ -500,6 +498,15 @@ export default function News() {
 
       {fullscreenRumor && (
         <FullscreenRumorModal item={fullscreenRumor} onClose={() => setFullscreenRumor(null)} />
+      )}
+
+      {printToolOpen && (
+        <React.Suspense fallback={null}>
+          <PrintTool
+            initialKinds={isRumorsPage ? ['rumors'] : ['news', 'decrees']}
+            onClose={() => setPrintToolOpen(false)}
+          />
+        </React.Suspense>
       )}
 
       {rumorPrintTarget && (
