@@ -322,8 +322,12 @@ const asGroupContact = (g) => ({
   icon: g.icon || null,
   created_by: g.created_by,
   last_message_at: g.last_message_at ? new Date(g.last_message_at).getTime() : 0,
-  unread_count: g.unread_count || 0
+  unread_count: g.unread_count || 0,
+  last_read_at: g.last_read_at || null
 });
+
+// Unread count from which a group offers the AI catch-up summary.
+const SUMMARY_MIN_UNREAD = 10;
 
 const isContactAdmin = (u) => u?.role === 'admin' || u?.permission_level === 'admin' || !!u?.is_admin;
 
@@ -548,6 +552,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   // to it from a quote.
   const [replyTo, setReplyTo] = useState(null);
   const [flashMsgId, setFlashMsgId] = useState(null);
+  // Group opened with unread messages: { key, since, count, summary, loading, mentionIdx }.
+  // `since` is my last_read_at before opening marked it read.
+  const [catchUp, setCatchUp] = useState(null);
 
   // Shared by the message composer's picker and the group-picture picker:
   // a custom (clan/crest) pick becomes a ':Clan_Name:' token, anything else
@@ -847,6 +854,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const messagesListRef = useRef(null);
   const userScrollingRef = useRef(false);
   const initialScrollDoneRef = useRef(false);
+  // Until this time the list is running revealMessage's smooth scroll. Its
+  // first frames are still near the bottom, so the scroll handler used to
+  // read them as "user is back at the bottom" and the next update snapped
+  // the list down, cancelling the jump (deep links, saved messages).
+  const jumpUntilRef = useRef(0);
 
   const isNearBottom = (el, pad = 150) => {
     if (!el) return true;
@@ -1516,6 +1528,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const handleListScroll = (e) => {
     const el = e.currentTarget;
     if (!initialScrollDoneRef.current) return;
+    if (Date.now() < jumpUntilRef.current) return; // our own jump animating, not the user
     const nearBottom = isNearBottom(el);
     userScrollingRef.current = !nearBottom;
     setShowScrollBtn(!isNearBottom(el, 300));
@@ -2063,6 +2076,35 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     ? mentionPattern(headerGroupMembers.map(m => m.char_name || m.display_name), myName)
     : null), [selectedContact, headerGroupMembers, myName]);
 
+  // Unread messages that @mention me, oldest first: the catch-up banner jumps through them.
+  const unreadMentions = useMemo(() => {
+    if (!catchUp || catchUp.key !== threadKey || !groupMention?.me) return [];
+    const since = new Date(catchUp.since).getTime();
+    return messages.filter(m => m.type !== 'system' && m.sender_id !== currentUser?.id
+      && new Date(m.created_at).getTime() > since
+      && [...String(m.body || '').matchAll(groupMention.re)].some(x => x[1].toLowerCase() === groupMention.me));
+  }, [catchUp, threadKey, groupMention, messages, currentUser?.id]);
+
+  const jumpToMention = () => {
+    const target = unreadMentions[catchUp.mentionIdx % unreadMentions.length];
+    setCatchUp(p => ({ ...p, mentionIdx: p.mentionIdx + 1 }));
+    scrollToMessage(target.id);
+    setFlashMsgId(target.id);
+    setTimeout(() => setFlashMsgId(null), 2000);
+  };
+
+  const summarizeUnread = async () => {
+    const { key, since } = catchUp;
+    setCatchUp(p => ({ ...p, loading: true }));
+    try {
+      const { data } = await api.post(`/chat/groups/${selectedContact.id}/summarize`, { since });
+      setCatchUp(p => (p?.key === key ? { ...p, loading: false, summary: data.summary } : p));
+    } catch (e) {
+      toast.error(formatApiError(e, 'Could not summarize the unread messages.'));
+      setCatchUp(p => (p?.key === key ? { ...p, loading: false } : p));
+    }
+  };
+
   const handleKeyDown = (e) => {
     if (mentionMatches.length) {
       if (e.key === 'Enter' || e.key === 'Tab') {
@@ -2121,7 +2163,19 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const el = document.getElementById(`chat-msg-${id}`);
     if (!el) return false;
     userScrollingRef.current = true; // keep the auto scroll-to-bottom from undoing the jump
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    jumpUntilRef.current = Date.now() + 1500;
+    // Smooth only for a short hop: a long smooth scroll on a busy page starts
+    // late and gets cut short, leaving the target off screen. Far = instant.
+    const list = messagesListRef.current;
+    const far = !list || Math.abs(el.getBoundingClientRect().top - list.getBoundingClientRect().top) > list.clientHeight;
+    el.scrollIntoView({ behavior: far ? 'auto' : 'smooth', block: 'center' });
+    // Once the scroll has settled, read where it really ended up.
+    setTimeout(() => {
+      const list = messagesListRef.current;
+      if (!list || Date.now() < jumpUntilRef.current) return;
+      userScrollingRef.current = !isNearBottom(list);
+      setShowScrollBtn(!isNearBottom(list, 300));
+    }, 1550);
     setFlashMsgId(id);
     setTimeout(() => setFlashMsgId(f => (f === id ? null : f)), 1600);
     return true;
@@ -2533,7 +2587,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
       api.post('/chat/read', { sender_id: contact.id }).catch(() => { });
     } else if (contact.type === 'group') {
-      setGroups(prev => prev.map(g => g.id === contact.id ? { ...g, unread_count: 0 } : g));
+      setGroups(prev => prev.map(g => g.id === contact.id ? { ...g, unread_count: 0, last_read_at: new Date().toISOString() } : g));
       api.post(`/chat/groups/${contact.id}/read`).catch(() => { });
     } else if (contact.type === 'npc' && !isAdmin) {
       setNpcs(prev => prev.map(n => n.id === contact.id ? { ...n, unread_count: 0 } : n));
@@ -2565,6 +2619,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const nextKey = buildThreadKey(contact, null);
     setNewMessage(drafts[nextKey] || '');
     setError('');
+    setCatchUp(contact.type === 'group' && contact.unread_count > 0 && contact.last_read_at
+      ? { key: nextKey, since: contact.last_read_at, count: contact.unread_count, mentionIdx: 0 }
+      : null);
     markThreadRead(contact, null);
 
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2617,6 +2674,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const [t, id] = chatParam.split('-');
     const list = t === 'u' ? users : t === 'g' ? groups : t === 'n' ? npcs : [];
     const contact = list.find(c => String(c.id) === id);
+    const jumpId = Number(searchParams.get('m'));
+    if (contact && jumpId) savedJumpRef.current = { key: buildThreadKey(contact, null), id: jumpId, npcId: null, playerId: null, armedFor: null };
     if (contact) selectContact(contact);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatParam, users, groups, npcs]);
@@ -3946,6 +4005,53 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             >
               View all
             </button>
+          </div>
+        )}
+
+        {/* Catch-up banner: AI summary of what I missed + jump to messages that mention me */}
+        {catchUp?.key === threadKey && (catchUp.count >= SUMMARY_MIN_UNREAD || unreadMentions.length > 0) && (
+          <div className="shrink-0 px-4 py-2 bg-surface-container-high/90 border-b border-outline-variant/40 backdrop-blur z-10 shadow-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-system-code text-on-surface-variant flex-1 min-w-0 basis-[calc(100%-3rem)] sm:basis-0">
+                {catchUp.count} unread since you were last here
+              </span>
+              <button
+                type="button"
+                onClick={() => setCatchUp(null)}
+                className="sm:order-last text-on-surface-variant hover:text-primary transition-colors p-1.5"
+                aria-label="Dismiss"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+              {unreadMentions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={jumpToMention}
+                  className="flex items-center gap-1 text-[11px] font-system-code text-primary px-2.5 py-1.5 rounded bg-surface-variant/30 hover:bg-surface-variant/60 transition-colors"
+                  title="Jump to the message that mentions you"
+                >
+                  <span className="material-symbols-outlined text-[16px]">alternate_email</span>
+                  Jump to mention{unreadMentions.length > 1 ? ` (${(catchUp.mentionIdx % unreadMentions.length) + 1} of ${unreadMentions.length})` : ''}
+                </button>
+              )}
+              {catchUp.count >= SUMMARY_MIN_UNREAD && !catchUp.summary && (
+                <button
+                  type="button"
+                  onClick={summarizeUnread}
+                  disabled={catchUp.loading}
+                  className="flex items-center gap-1 text-[11px] font-system-code text-primary px-2.5 py-1.5 rounded bg-surface-variant/30 hover:bg-surface-variant/60 transition-colors disabled:opacity-60"
+                >
+                  <span className={`material-symbols-outlined text-[16px]${catchUp.loading ? ' animate-spin' : ''}`}>{catchUp.loading ? 'progress_activity' : 'auto_awesome'}</span>
+                  {catchUp.loading ? 'Summarizing...' : 'AI Summarize'}
+                </button>
+              )}
+            </div>
+            {catchUp.summary && (
+              <div className="mt-2 max-h-32 sm:max-h-48 overflow-y-auto custom-scrollbar text-[12px] text-on-surface whitespace-pre-wrap break-words">
+                {catchUp.summary}
+                <p className="mt-1 mb-0 text-[10px] text-on-surface-variant/60">AI-generated summary. Check the messages for details.</p>
+              </div>
+            )}
           </div>
         )}
 
