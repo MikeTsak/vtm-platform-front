@@ -1,0 +1,34 @@
+{
+  "title": "Erebus Portal",
+  "tagline": "Player and Storyteller web portal for Vampire: The Masquerade live action role play chronicles.",
+  "description": "The central web portal for Athens Through Time players and Storytellers. Players manage V5 character sheets, XP spending, downtime submissions, feeding hunts, coterie pools, and interactive Athens domain maps with deck.gl. Storytellers use a comprehensive administrative console for chronicle management, blood web relationship graphs, live session dice tracking, and in fiction communications.",
+  "type": "Web app",
+  "status": "live",
+  "year": 2025,
+  "role": "Solo developer",
+  "tags": [
+    "React",
+    "Vite",
+    "Tailwind CSS",
+    "JavaScript",
+    "MapLibre",
+    "TanStack Query"
+  ],
+  "highlights": [
+    "V5 character sheet creation wizard, XP shop, and automated downtime processing",
+    "Interactive Athens territory domain maps powered by deck.gl and MapLibre",
+    "In fiction communications featuring SchreckNet chat, Surface Web email, and notes",
+    "Storyteller admin console with blood web graph, calendar events, and live dice"
+  ],
+  "links": [
+    {
+      "label": "Open portal",
+      "url": "https://portal.attlarp.gr"
+    },
+    {
+      "label": "Visit chronicle",
+      "url": "https://attlarp.gr"
+    }
+  ],
+  "cover": "cover.webp"
+}
