@@ -529,6 +529,46 @@ export default function Home() {
                   onClose={() => setNotifPanelOpen(false)}
                   onChange={(st) => setPushEnabled(Object.values(st).some(Boolean))}
                 />
+
+                <button
+                  type="button"
+                  title="Download My Data (JSON)"
+                  aria-label="Download My Data (JSON)"
+                  onClick={async () => {
+                    try {
+                      const res = await api.get('/users/me/export', { responseType: 'blob' });
+                      const url = URL.createObjectURL(res.data);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'erebus-portal-data.json';
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    } catch (e) {
+                      console.error('Data export failed', e);
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-muted)',
+                    borderRadius: '50%',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  data-cuelume-hover
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
+                    download
+                  </span>
+                </button>
               </div>
             </div>
 

@@ -33,6 +33,7 @@ export default function AdminPremonitionsTab() {
 
   // Content Warnings state
   const [selectedWarnings, setSelectedWarnings] = useState(new Set());
+  const [previewItem, setPreviewItem] = useState(null);
   const [customWarning, setCustomWarning] = useState("");
 
   // Upload progress state
@@ -137,7 +138,7 @@ export default function AdminPremonitionsTab() {
   const abortUpload = () => {
     try {
       abortControllerRef.current?.abort();
-    } catch {}
+    } catch { }
     resetProgress();
     setErr("Upload cancelled");
   };
@@ -228,36 +229,38 @@ export default function AdminPremonitionsTab() {
     }
   };
 
+  const resolveMediaUrlForAdmin = async (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    let endpoint = url.startsWith("/api/") ? url.slice(4) : url;
+    try {
+      const infoRes = await api.get(endpoint + (endpoint.includes("?") ? "&info=1" : "?info=1"));
+      if (infoRes.data?.url && (infoRes.data.url.startsWith("http://") || infoRes.data.url.startsWith("https://"))) {
+        return infoRes.data.url;
+      }
+    } catch { }
+
+    const rawBase = import.meta.env.VITE_API_URL || "";
+    const base = rawBase.replace(/\/+$/, "");
+    const rel = base.endsWith("/api") && url.startsWith("/api/") ? url.slice(4) : url;
+    return url.startsWith("http") ? url : `${base}${rel.startsWith("/") ? "" : "/"}${rel}`;
+  };
+
   // Open media link safely (handles direct CDN URLs or backend redirection)
   async function openMediaWithAuth(url) {
     try {
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        window.open(url, "_blank", "noopener");
-        return;
-      }
-      let endpoint = url;
-      if (endpoint.startsWith("/api/")) {
-        endpoint = endpoint.slice(4);
-      }
-      try {
-        const infoRes = await api.get(endpoint + (endpoint.includes("?") ? "&info=1" : "?info=1"));
-        if (infoRes.data?.url) {
-          const direct = infoRes.data.url;
-          if (direct.startsWith("http://") || direct.startsWith("https://")) {
-            window.open(direct, "_blank", "noopener");
-            return;
-          }
-        }
-      } catch {}
-
-      const rawBase = import.meta.env.VITE_API_URL || "";
-      const base = rawBase.replace(/\/+$/, "");
-      const rel = base.endsWith("/api") && url.startsWith("/api/") ? url.slice(4) : url;
-      const fullUrl = url.startsWith("http") ? url : `${base}${rel.startsWith("/") ? "" : "/"}${rel}`;
-      window.open(fullUrl, "_blank", "noopener");
+      const fullUrl = await resolveMediaUrlForAdmin(url);
+      if (fullUrl) window.open(fullUrl, "_blank", "noopener");
     } catch (e) {
       alert(`Unable to open media: ${formatApiError(e)}`);
     }
+  }
+
+  async function openPreviewModal(item) {
+    const resolved = await resolveMediaUrlForAdmin(item.content_url);
+    setPreviewItem({ ...item, resolvedUrl: resolved });
   }
 
   const prettyBytes = (n) => {
@@ -526,14 +529,24 @@ export default function AdminPremonitionsTab() {
                   {h.content_type === "text" ? (
                     <div className={s.historyItemText}>{h.content_text}</div>
                   ) : h.content_url ? (
-                    <button
-                      type="button"
-                      onClick={() => openMediaWithAuth(h.content_url)}
-                      className={s.btn}
-                      style={{ marginTop: 6 }} // This small inline style is acceptable
-                    >
-                      Open {h.content_type}
-                    </button>
+                    <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => openPreviewModal(h)}
+                        className={s.btn}
+                      >
+                        <FaGlyph name="fa-eye" size={13} style={{ marginRight: 6 }} />
+                        Preview {h.content_type}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openMediaWithAuth(h.content_url)}
+                        className={s.btn}
+                      >
+                        <FaGlyph name="fa-arrow-up-right-from-square" size={13} style={{ marginRight: 6 }} />
+                        Open {h.content_type}
+                      </button>
+                    </div>
                   ) : null}
 
                   {h.warnings && h.warnings.length > 0 && (
@@ -548,7 +561,9 @@ export default function AdminPremonitionsTab() {
                   )}
 
                   <div className={s.historyRecipients}>
-                    <div className={s.historyRecipientsTitle}>Recipients</div>
+                    <div className={s.historyRecipientsTitle}>
+                      Recipients ({(h.recipients || []).filter((r) => r.viewed_at).length} / {(h.recipients || []).length} viewed)
+                    </div>
                     {h.recipients?.length ? (
                       <ul className={s.historyRecipientsList}>
                         {h.recipients.map((r) => (
@@ -585,6 +600,58 @@ export default function AdminPremonitionsTab() {
           )}
         </div>
       </div>
+
+      {previewItem && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPreviewItem(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 9999,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#161922",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 12,
+              maxWidth: 760,
+              width: "100%",
+              padding: 16,
+              color: "#fff",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <strong>Premonition Preview ({previewItem.content_type})</strong>
+              <button type="button" className={s.btn} onClick={() => setPreviewItem(null)}>
+                <FaGlyph name="fa-xmark" size={14} /> Close
+              </button>
+            </div>
+            {previewItem.content_type === "video" ? (
+              <video
+                src={previewItem.resolvedUrl}
+                controls
+                playsInline
+                style={{ width: "100%", maxHeight: "70vh", borderRadius: 8, background: "#000" }}
+              />
+            ) : (
+              <img
+                src={previewItem.resolvedUrl}
+                alt="Premonition preview"
+                style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 8 }}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

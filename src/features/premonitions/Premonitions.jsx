@@ -7,6 +7,7 @@ import s from "../../styles/Premonitions.module.css";
 import { Skeleton } from "boneyard-js/react";
 import api, { formatApiError } from "../../core/api";
 import FaGlyph from "../../ui/FaGlyph";
+import { reportClientError } from "../../utils/clientErrors";
 
 /**
  * API base helper
@@ -262,6 +263,10 @@ function PremonitionItem({ item, index }) {
 
     setVideoErrorDetails({ code, reason });
     setVideoStatus("error");
+    reportClientError("premonition_video_error", reason, {
+      code,
+      premonitionId: item.id,
+    });
   };
 
   const handleRetryVideo = () => {
@@ -272,8 +277,8 @@ function PremonitionItem({ item, index }) {
   };
 
   return (
-    <article 
-      className={s.visionCard} 
+    <article
+      className={s.visionCard}
       style={{ '--n': index + 1 }}
     >
       <div className={s.visionHeader}>

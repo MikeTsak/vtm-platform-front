@@ -26,6 +26,8 @@ export default function AdminDiscordTab({ users = [] }) {
     notify_news: true,
     notify_prems: true,
     ai_enabled: false,
+    ai_disabled: false,
+    ai_usage: null,
     ai_system_prompt: '',
     ai_has_key: false,
     discord_emoji_ids: {},
@@ -113,6 +115,7 @@ export default function AdminDiscordTab({ users = [] }) {
         notify_news: config.notify_news,
         notify_prems: config.notify_prems,
         ai_enabled: config.ai_enabled,
+        ai_disabled: config.ai_disabled,
         ai_system_prompt: config.ai_system_prompt || '',
         discord_emoji_ids: config.discord_emoji_ids || {}
       });
@@ -318,10 +321,15 @@ export default function AdminDiscordTab({ users = [] }) {
           <b style={{ color: config.ai_has_key ? '#00C851' : '#FF4444', marginLeft: '6px' }}>
             {config.ai_has_key ? 'Configured' : 'Missing'}
           </b>
+          {config.ai_usage && (
+            <span style={{ marginLeft: '12px' }}>
+              Daily AI Usage: <b>{config.ai_usage.dayCount} / {config.ai_usage.dailyMax}</b>
+            </span>
+          )}
         </span>
       </div>
 
-      <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '25px', border: '1px solid var(--glass-border)', borderLeft: config.ai_enabled ? '4px solid #00C851' : '4px solid #FF4444', boxShadow: 'var(--glass-shadow)' }}>
+      <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '25px', border: '1px solid var(--glass-border)', borderLeft: config.ai_enabled && !config.ai_disabled ? '4px solid #00C851' : '4px solid #FF4444', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ marginBottom: '16px' }}>
           <label className={styles.toggleLabel} style={{ fontSize: '0.98rem', fontWeight: 'bold' }}>
             <div className={styles.toggleSwitch}>
@@ -336,6 +344,23 @@ export default function AdminDiscordTab({ users = [] }) {
           </label>
           <p style={{ margin: '8px 0 0 0', fontSize: '0.84rem', color: 'var(--text-muted, #aaa)', lineHeight: 1.4 }}>
             When enabled, mentioning the bot in Discord queries the SchreckNet Nosferatu persona with Athens domain and news tools.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '16px', paddingTop: '12px', borderTop: '1px solid var(--glass-border)' }}>
+          <label className={styles.toggleLabel} style={{ fontSize: '0.95rem', fontWeight: 'bold' }}>
+            <div className={styles.toggleSwitch}>
+              <input
+                type="checkbox"
+                checked={Boolean(config.ai_disabled)}
+                onChange={e => setConfig({ ...config, ai_disabled: e.target.checked })}
+              />
+              <span className={styles.toggleSlider}></span>
+            </div>
+            <span>Global AI Kill Switch: {config.ai_disabled ? 'Active (All Gemini AI features paused)' : 'Off (Normal operation)'}</span>
+          </label>
+          <p style={{ margin: '6px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted, #aaa)', lineHeight: 1.4 }}>
+            Immediately pauses Giannakis AI, Rule Master AI, and group chat summaries across the platform.
           </p>
         </div>
 

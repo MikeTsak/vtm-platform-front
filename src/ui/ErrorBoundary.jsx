@@ -1,5 +1,6 @@
 // src/ui/ErrorBoundary.jsx
 import React from 'react';
+import { reportClientError } from '../utils/clientErrors';
 
 export default class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -9,6 +10,9 @@ export default class ErrorBoundary extends React.Component {
   }
   componentDidCatch(error, info) {
     console.error('Error boundary caught:', error, info);
+    reportClientError('error_boundary', error?.message || 'React render error', {
+      componentStack: String(info?.componentStack || '').slice(0, 300),
+    });
   }
   // `fallback` replaces the default message (null = render nothing). Give the
   // boundary a `key` that changes on navigation so another page starts clean.

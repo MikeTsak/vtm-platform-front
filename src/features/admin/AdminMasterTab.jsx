@@ -257,20 +257,23 @@ export default function AdminMasterTab({ characters: propChars = null, users: pr
     };
   };
 
-  const runMediaMigration = () => {
-    if(!window.confirm("Are you sure you want to run the media migration? This will upload blobs to the image service.")) return;
+  const runMediaMigration = (repair = false) => {
+    const msg = repair
+      ? "Are you sure you want to scan and repair broken or mislabeled CDN media from preserved DB BLOBs?"
+      : "Are you sure you want to run the media migration? This will upload blobs to the image service.";
+    if(!window.confirm(msg)) return;
     setMediaMigrationRunning(true);
     setMediaMigrationLogs([]);
     setMediaMigrationProgress(0);
     setMediaMigrationDone(false);
 
     const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
-    const es = new EventSource(`${baseUrl}/admin/migrate-media/stream`, { withCredentials: true });
+    const es = new EventSource(`${baseUrl}/admin/migrate-media/stream${repair ? '?repair=1' : ''}`, { withCredentials: true });
 
     es.addEventListener('start', (e) => {
       const data = JSON.parse(e.data);
       setMediaMigrationTotal(data.total);
-      setMediaMigrationLogs(prev => [...prev, `[System] Starting media migration.`]);
+      setMediaMigrationLogs(prev => [...prev, `[System] Starting ${repair ? 'media repair' : 'media migration'}.`]);
     });
 
     es.addEventListener('progress', (e) => {
@@ -1423,14 +1426,24 @@ export default function AdminMasterTab({ characters: propChars = null, users: pr
                   <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Run Media Migration</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Upload all legacy image BLOBs to the new media service while preserving original BLOBs.</div>
                 </div>
-                <button
-                  onClick={runMediaMigration}
-                  disabled={mediaMigrationRunning}
-                  className={styles.btn}
-                  style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 700 }}
-                >
-                  {mediaMigrationRunning ? 'Running...' : 'Run Media Migration'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => runMediaMigration(false)}
+                    disabled={mediaMigrationRunning}
+                    className={styles.btn}
+                    style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 700 }}
+                  >
+                    {mediaMigrationRunning ? 'Running...' : 'Run Media Migration'}
+                  </button>
+                  <button
+                    onClick={() => runMediaMigration(true)}
+                    disabled={mediaMigrationRunning}
+                    className={styles.btn}
+                    style={{ background: 'var(--accent-purple)', color: '#fff', border: 'none', fontWeight: 700 }}
+                  >
+                    {mediaMigrationRunning ? 'Running...' : 'Repair Broken CDN Media'}
+                  </button>
+                </div>
               </div>
 
               {(mediaMigrationRunning || mediaMigrationLogs.length > 0) && (

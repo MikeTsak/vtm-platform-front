@@ -155,6 +155,30 @@ function DebugSessionBar() {
 const IMMERSIVE_ROUTES = ['/schrecknet'];
 const IMMERSIVE_PREFIXES = ['/admin/character/'];
 
+const ROUTE_TITLES = {
+  '/': 'Home : Erebus Portal | Athens Through Time',
+  '/character': 'Character Sheet : Erebus Portal',
+  '/retainers': 'Retainers : Erebus Portal',
+  '/make': 'Character Builder : Erebus Portal',
+  '/domains': 'Athens Domains : Erebus Portal',
+  '/downtimes': 'Downtimes : Erebus Portal',
+  '/feeding': 'Feeding : Erebus Portal',
+  '/boons': 'Boons Ledger : Erebus Portal',
+  '/schrecknet': 'SchreckNet : Erebus Portal',
+  '/surfaceweb': 'Surface Web : Erebus Portal',
+  '/notes': 'Anonymous Notes : Erebus Portal',
+  '/live-session': 'Live Session : Erebus Portal',
+  '/court/hierarchy': 'Court Hierarchy : Erebus Portal',
+  '/court/announcements': 'Court Decrees : Erebus Portal',
+  '/court/coteries': 'Coteries : Erebus Portal',
+  '/court/actions': 'Court Actions : Erebus Portal',
+  '/premonitions': 'Premonitions : Erebus Portal',
+  '/admin': 'Admin Console : Erebus Portal',
+  '/admin/live-session': 'Admin Live Session : Erebus Portal',
+  '/admin/knowledge-base': 'Knowledge Base : Erebus Portal',
+  '/admin/npcs': 'Admin NPCs : Erebus Portal',
+};
+
 function AppLayout() {
   const location = useLocation();
   const isImmersive = IMMERSIVE_ROUTES.includes(location.pathname)
@@ -277,6 +301,7 @@ function AppLayout() {
       }
     >
       <Helmet>
+        <title>{ROUTE_TITLES[location.pathname] || 'Erebus Portal : Athens Through Time'}</title>
         <link rel="canonical" href={`https://portal.attlarp.gr${location.pathname}`} />
       </Helmet>
       <OfflineBanner />
