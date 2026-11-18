@@ -252,7 +252,8 @@ export default function AdminPremonitionsTab() {
 
       const rawBase = import.meta.env.VITE_API_URL || "";
       const base = rawBase.replace(/\/+$/, "");
-      const fullUrl = url.startsWith("http") ? url : `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+      const rel = base.endsWith("/api") && url.startsWith("/api/") ? url.slice(4) : url;
+      const fullUrl = url.startsWith("http") ? url : `${base}${rel.startsWith("/") ? "" : "/"}${rel}`;
       window.open(fullUrl, "_blank", "noopener");
     } catch (e) {
       alert(`Unable to open media: ${formatApiError(e)}`);

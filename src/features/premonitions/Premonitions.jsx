@@ -141,6 +141,7 @@ function PremonitionItem({ item, index }) {
   const [videoErrorDetails, setVideoErrorDetails] = useState(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [usedStreamFallback, setUsedStreamFallback] = useState(false);
   const imgRef = useRef(null);
 
   const when = useMemo(() => {
@@ -183,6 +184,15 @@ function PremonitionItem({ item, index }) {
     };
   }, [isMedia, item.content_url]);
 
+  const tryBackendStreamFallback = useCallback(() => {
+    if (usedStreamFallback || !item.id) return false;
+    const current = resolvedUrl || mediaUrl || "";
+    if (!current.startsWith("http://") && !current.startsWith("https://")) return false;
+    setUsedStreamFallback(true);
+    setResolvedUrl(qualifyUrl(`/api/premonitions/media/${item.id}`));
+    return true;
+  }, [usedStreamFallback, item.id, resolvedUrl, mediaUrl]);
+
   // Active preload for images
   useEffect(() => {
     const activeUrl = resolvedUrl || mediaUrl;
@@ -193,15 +203,17 @@ function PremonitionItem({ item, index }) {
       if (img.complete) {
         if (img.naturalWidth > 0) {
           setImgStatus("loaded");
-        } else {
+        } else if (!tryBackendStreamFallback()) {
           setImgStatus("error");
         }
       } else {
         img.onload = () => setImgStatus("loaded");
-        img.onerror = () => setImgStatus("error");
+        img.onerror = () => {
+          if (!tryBackendStreamFallback()) setImgStatus("error");
+        };
       }
     }
-  }, [revealed, kind, resolvedUrl, mediaUrl]);
+  }, [revealed, kind, resolvedUrl, mediaUrl, tryBackendStreamFallback]);
 
   const handleVideoLoadStart = () => {
     setIsBuffering(true);
@@ -224,6 +236,13 @@ function PremonitionItem({ item, index }) {
   };
 
   const handleVideoError = (e) => {
+    if (tryBackendStreamFallback()) {
+      setIsBuffering(true);
+      setVideoStatus("loading");
+      setRetryKey((k) => k + 1);
+      return;
+    }
+
     setIsBuffering(false);
     const mediaErr = e?.currentTarget?.error;
     let code = mediaErr?.code || 0;
@@ -236,7 +255,7 @@ function PremonitionItem({ item, index }) {
     } else if (code === 3) {
       reason = "Decode error: The video signal is corrupted or cannot be decoded";
     } else if (code === 4) {
-      reason = "Video format or codec unsupported by this browser: e.g. HEVC or QuickTime format";
+      reason = "Media source could not be loaded or its format/codec is unsupported by this browser";
     } else if (mediaErr?.message) {
       reason = mediaErr.message;
     }
