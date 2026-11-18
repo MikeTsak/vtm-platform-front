@@ -36,7 +36,7 @@ export default function MediaViewer() {
       setError('');
 
       try {
-        const res = await api.get(`/premonitions/media/${id}?info=1`);
+        const res = await api.get(`/premonitions/media/${id}?info=1&by=premonition`);
 
         if (cancelled) return;
 
