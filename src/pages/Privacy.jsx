@@ -48,6 +48,8 @@ export default function Privacy() {
           <li><a href="#kids">Kids’ Privacy</a></li>
           <li><a href="#changes">Changes to this Policy</a></li>
           <li><a href="#third-party">Third-Party Services</a></li>
+          <li><a href="#named-third-parties">Named Third Party Processors</a></li>
+          <li><a href="#ai-use">Artificial Intelligence Features</a></li>
           <li><a href="#fb-pixel">Facebook Pixel</a></li>
           <li><a href="#tracking">Tracking Technologies</a></li>
           <li><a href="#gdpr">GDPR</a></li>
@@ -245,6 +247,31 @@ export default function Privacy() {
         <section id="third-party">
           <h2>Third-Party Services</h2>
           <p>We may display, include, or link to third-party content/services. Use is at your own risk, under those third parties’ terms and policies.</p>
+        </section>
+
+        <section id="named-third-parties">
+          <h2>Named Third Party Processors and Services</h2>
+          <p>To operate, measure, and support Erebus Portal, we use the following third party services (subject to your cookie consent choices where applicable):</p>
+          <ul>
+            <li><strong>Google Analytics 4:</strong> website traffic and usage measurement (consent gated).</li>
+            <li><strong>Google AdSense and Adsterra:</strong> advertising delivery on public pages (consent gated for personalized ads).</li>
+            <li><strong>Microsoft Clarity:</strong> session replay and UX analytics (loaded only after cookie consent is granted).</li>
+            <li><strong>Google Gemini API:</strong> powers our optional in portal AI features (Rule Master and Giannakis AI).</li>
+            <li><strong>Discord:</strong> community integration, character/court notifications, and optional bot interactions.</li>
+            <li><strong>EmailJS:</strong> transactional email delivery for password resets.</li>
+            <li><strong>Expo Push / Web Push:</strong> optional device push notifications when enabled by the user.</li>
+            <li><strong>Image CDN (img.miketsak.gr):</strong> hosting uploaded avatars and media assets.</li>
+          </ul>
+        </section>
+
+        <section id="ai-use">
+          <h2>Artificial Intelligence Features</h2>
+          <p>
+            Erebus Portal uses artificial intelligence powered by the Google Gemini API for the Wiki Rule Master assistant
+            and the Giannakis AI SchreckNet/Discord node, as well as optional admin chat summarization. When you interact with
+            these features, your prompt or query (and, where applicable, character name and clan context) is sent to Google
+            Gemini to generate a response. Please do not submit sensitive personal information in AI prompts.
+          </p>
         </section>
 
         <section id="fb-pixel">

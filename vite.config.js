@@ -40,6 +40,9 @@ export default defineConfig(async ({ mode }) => {
     : [];
 
   return {
+  esbuild: mode === 'production'
+    ? { drop: ['debugger'], pure: ['console.log', 'console.debug', 'console.info'] }
+    : undefined,
   plugins: [
     react(),
     // Generates multiple sizes of the clan symbol/logo images at build time

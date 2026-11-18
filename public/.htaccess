@@ -1,6 +1,9 @@
 RewriteEngine On
 RewriteBase /
 
+# Block access to hidden files and directories (e.g. .git, .env), except .well-known
+RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
 # ----------------------------------------
 # 🔒 0. Security Headers
 # ----------------------------------------
