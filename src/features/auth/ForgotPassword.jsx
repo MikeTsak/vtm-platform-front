@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/auth/Login.module.css';
 
 export default function ForgotPassword() {
@@ -14,18 +14,16 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      // The server will handle the logic of checking if the user exists
-      // and sending the EmailJS template.
+      // The server handles checking if the user exists and sending via EmailJS.
       await api.post('/auth/forgot', { email: email.trim() });
       setDone(true); 
     } catch (error) {
-      // Security: If the error is a 404 or 400, we still show "done"
-      // to prevent attackers from guessing which emails are registered.
-      if (error.response && error.response.status < 500) {
+      // Keep 400/404 opaque so attackers cannot enumerate registered emails.
+      const status = error.response?.status;
+      if (status === 400 || status === 404) {
         setDone(true);
       } else {
-        // Only show a real error if the server is down or crashed
-        setErr("The shadows are restless. Please try again in a few moments.");
+        setErr(formatApiError(error, 'Failed to send password reset email. Please try again in a few moments.'));
       }
     } finally {
       setLoading(false);
@@ -60,9 +58,9 @@ export default function ForgotPassword() {
               </p>
               
               {err && (
-                <div className={styles.alert}>
+                <div className={styles.alert} role="alert">
                   <span className={styles['alert-dot']} />
-                  {err}
+                  <span>{err}</span>
                 </div>
               )}
 

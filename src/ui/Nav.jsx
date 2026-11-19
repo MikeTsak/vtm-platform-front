@@ -2,10 +2,10 @@ import React, { useContext, useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { AuthCtx } from '../core/AuthContext';
 import { roleFlags } from '../core/useRole';
-import { useTheme } from '../core/ThemeContext';
 import api from '../core/api';
 import { useQuery } from '@tanstack/react-query';
 import { useCommsUnread } from '../features/comms/useCommsUnread';
+import { hasPremonitionPower } from '../utils/premonitionPower';
 
 function UnreadBadge({ count, label = 'unread' }) {
   if (!count) return null;
@@ -96,8 +96,6 @@ const getNavItemClass = ({ isActive, isDropdownItem = false, isMobile = false })
 export default function Nav() {
   const { user, logout } = useContext(AuthCtx);
   const { isAdmin, isCourt } = roleFlags(user);
-  const { clan: themeClan } = useTheme();
-  const [characterClan, setCharacterClan] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [canSeePremonitions, setCanSeePremonitions] = useState(false);
   const [isCharActive, setIsCharActive] = useState(false);
@@ -146,7 +144,6 @@ export default function Nav() {
 
     if (!user) {
       setCanSeePremonitions(false);
-      setCharacterClan(null);
       return;
     }
 
@@ -158,24 +155,19 @@ export default function Nav() {
       .then(({ data }) => {
         if (!live) return;
         const c = data?.character?.clan || null;
-        setCharacterClan(c);
+        const isMalk = String(c || '').trim().toLowerCase() === 'malkavian';
+        setCanSeePremonitions(isMalk && hasPremonitionPower(data?.character?.sheet));
         if (!isCourt) {
           setIsCharActive(data?.character?.sheet?.is_active === true);
         }
       })
       .catch(() => {
         if (!live) return;
-        setCharacterClan(null);
+        setCanSeePremonitions(false);
       });
 
     return () => { live = false; };
   }, [user]);
-
-  // Synchronize Malkavian premonitions visibility strictly for Malkavians
-  useEffect(() => {
-    const effectiveClan = (themeClan || characterClan || '').trim().toLowerCase();
-    setCanSeePremonitions(effectiveClan === 'malkavian');
-  }, [themeClan, characterClan]);
 
   return (
     <>

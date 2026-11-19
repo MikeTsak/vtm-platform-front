@@ -11,6 +11,7 @@ import { Skeleton } from 'boneyard-js/react';
 import { trackPageView, setUserId, setUserProperties } from '../utils/analytics';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { syncWebPush } from '../utils/push';
+import { hasPremonitionPower } from '../utils/premonitionPower';
 
 // Pages & Components (Critical Path)
 import GlobalBanner from '../components/GlobalBanner';
@@ -117,7 +118,8 @@ function MalkavianOrAdminOnly({ children }) {
     api.get('/characters/me')
       .then(({ data }) => {
         const isMalkavian = data.character?.clan?.toLowerCase() === 'malkavian';
-        setIsAllowed(!!user && (roleFlags(user).isAdmin || isMalkavian));
+        const hasPower = hasPremonitionPower(data.character?.sheet);
+        setIsAllowed(!!user && (roleFlags(user).isAdmin || (isMalkavian && hasPower)));
         setLoading(false);
       })
       .catch(() => {
